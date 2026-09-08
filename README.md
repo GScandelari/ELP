@@ -4,6 +4,8 @@ Plataforma de auxílio para professores de inglês e alunos interessados em fixa
 
 Professores criam salas virtuais e atividades interativas de leitura e escrita; alunos ingressam nas salas e realizam exercícios com correção automática.
 
+O projeto é desenhado para evoluir para um produto comercial vendido a professores independentes: a arquitetura já é multi-tenant desde o MVP (múltiplos professores isolados por `accountId` num único deploy) e prevê, como fase pós-MVP, um portal admin para suporte e provisionamento de contas — ver ADR-009 e `docs/IMPLEMENTATION-PLAN.md` seção 7.
+
 ## Documentação
 
 - [`docs/SDD.md`](docs/SDD.md) — Software Design Document original (visão de produto, requisitos, modelo de domínio, casos de uso).

@@ -1,7 +1,7 @@
 # Plano de Implementação — ELP (English Learning Platform) sobre Firebase
 
-**Versão:** 0.1.0
-**Status:** Draft — depende de validação das questões em aberto (ver seção 8)
+**Versão:** 0.2.0
+**Status:** Draft — depende de validação das questões em aberto (ver seção 9)
 **Baseado em:** [`SDD.md`](./SDD.md) v0.1.0
 **Objetivo deste documento:** traduzir o SDD original (que sugeria Next.js + FastAPI + PostgreSQL) para uma arquitetura 100% Firebase, e organizar a implementação em fases sequenciais e testáveis.
 
@@ -16,6 +16,8 @@ O SDD original (seção 5 e 6) propõe um monólito modular com backend próprio
 3. **Autenticação e autorização usam primitivas do Firebase.** Login/senha, tokens e sessão passam a ser responsabilidade do Firebase Authentication; o RBAC (seção 15 do SDD) é implementado via *custom claims* no token + regras de segurança, em vez de middleware de aplicação.
 
 Essas mudanças **substituem** as decisões implícitas em ADR-002, ADR-003, ADR-004, ADR-005 e ADR-006 listadas na seção 25 do SDD. Ver `docs/adr/` para o registro formal.
+
+> **Atualização de escopo de produto:** este projeto passou a ser desenhado para virar um produto comercial vendido a professores independentes, com um portal admin futuro para suporte e provisionamento. Isso não muda o escopo do MVP (Fases 0–7 abaixo continuam as mesmas), mas afeta nomenclatura do modelo de dados desde já e adiciona uma fase pós-MVP — ver ADR-009 e seção 10.
 
 ---
 
@@ -90,13 +92,23 @@ users/{uid}
   # role é espelhado como custom claim no token; o documento é a fonte
   # de verdade legível pelo client, o claim é o que as rules verificam
 
+accounts/{accountId}
+  status (ACTIVE | SUSPENDED | TRIAL), createdAt
+  # novo, ver ADR-009. No MVP, accountId == uid do professor (1:1),
+  # mas o portal admin (Fase 8) já encontra uma âncora pronta para
+  # suspender/gerenciar contas sem precisar migrar dados depois
+
 enrollmentCodes/{code}
   classId
   # coleção auxiliar só para garantir unicidade (RN-001) e permitir
   # lookup O(1) por código sem precisar de uma query com índice em `classes`
 
 classes/{classId}
-  teacherId, name, description, enrollmentCode, status, createdAt, updatedAt
+  accountId, name, description, enrollmentCode, status, createdAt, updatedAt
+  # accountId substitui o antigo teacherId (ver ADR-009) — no MVP o valor
+  # é sempre o uid do professor dono da sala, mas o campo já nasce com o
+  # nome que suporta "conta" (professor OU futura escola/equipe) sem
+  # renomear em produção depois
 
 classes/{classId}/enrollments/{studentId}
   enrollmentType (SELF_ENROLLMENT | TEACHER_ASSIGNED), status, createdAt
@@ -139,6 +151,7 @@ classes/{classId}/resultsSummary/{studentId}
 
 - Se uma atividade puder pertencer a mais de uma sala (pergunta em aberto do SDD), o modelo acima precisa mudar de `classes/{classId}/activities` para uma coleção top-level `activities` com uma subcoleção `activityClasses` — **decisão bloqueante para a Fase 3**, não deve ser assumida.
 - Se atividades tiverem peso, o campo `weight` entra em `Activity`; se houver nota percentual **e** pontos, `resultsSummary` precisa guardar os dois.
+- `teacherId` foi renomeado para `accountId` em `classes/{classId}` (ver ADR-009) para acomodar a visão de produto comercial — decisão já tomada, de baixo custo, não bloqueia nenhuma fase.
 
 ---
 
@@ -148,20 +161,20 @@ Mapeamento direto das permissões da seção 15 do SDD para regras:
 
 ```text
 match /classes/{classId} {
-  allow read: if isTeacherOwner(classId) || isEnrolledStudent(classId);
+  allow read: if isAccountOwner(classId) || isEnrolledStudent(classId);
   allow create: if hasRole('teacher');
-  allow update, delete: if isTeacherOwner(classId);
+  allow update, delete: if isAccountOwner(classId);
 }
 
 match /classes/{classId}/activities/{activityId} {
-  allow read: if isTeacherOwner(classId)
+  allow read: if isAccountOwner(classId)
               || (isEnrolledStudent(classId) && resource.data.status == 'PUBLISHED');
-  allow write: if isTeacherOwner(classId);
+  allow write: if isAccountOwner(classId);
 }
 
 match /attempts/{attemptId} {
   allow read: if resource.data.studentId == request.auth.uid
-              || isTeacherOwnerOfClass(resource.data.classId);
+              || isAccountOwnerOfClass(resource.data.classId);
   allow create: if hasRole('student'); // validação de regras de negócio (max_attempts) fica na Cloud Function
   allow update: if false; // toda escrita de submissão/avaliação passa por Cloud Function com Admin SDK
 }
@@ -269,7 +282,33 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 
 ---
 
-## 7. Estrutura de repositório proposta
+## 7. Visão de produto — SaaS multi-tenant e portal admin (pós-MVP)
+
+Detalhamento do ADR-009. Esta seção é roadmap, não escopo das Fases 0–7 — existe para que as decisões de dados tomadas agora (`accountId`, `accounts/{accountId}`) não precisem ser desfeitas quando esta fase começar.
+
+### Fase 8 — Admin & Operação SaaS
+
+- **Portal admin real:** papel `admin` ganha UI própria (hoje é só suporte via console/Admin SDK, conforme `OPEN-QUESTIONS.md`).
+- **Provisionamento de professores independentes:** fluxo de aprovação/onboarding de novo `accounts/{accountId}` — pode ser self-service (cadastro aberto já é o default do MVP) ou com aprovação manual do admin, a decidir quando esta fase começar.
+- **Suporte:** visão read-only das salas/atividades de um professor para diagnóstico, sempre com registro de auditoria (RNF-006 já pede auditoria de operações relevantes) — nunca acesso silencioso aos dados de um professor.
+- **Gestão de contas:** suspender/reativar `accounts/{accountId}.status`, sem apagar dados.
+- **Métricas de plataforma:** professores ativos, salas ativas, atividades concluídas — já listadas como "métricas futuras" na seção 20 do SDD, agora com dono claro (o portal admin).
+- **Preparação para cobrança (sem implementar cobrança):** `accounts/{accountId}.status` como campo que futuramente acomoda `TRIAL`/`ACTIVE`/`PAST_DUE`/etc., sem integrar um provedor de pagamento agora (fora do MVP por decisão explícita do SDD original, seção 1.4).
+
+### Evolução opcional — múltiplos professores por conta (escolas/equipes)
+
+Se a demanda comercial pedir que uma "conta" represente uma escola com vários professores (não decidido — ver `OPEN-QUESTIONS.md`, "Haverá colaboração entre professores?"), o caminho de migração é aditivo, não destrutivo, graças ao ADR-009:
+
+```text
+accounts/{accountId}/members/{uid}
+  role (OWNER | TEACHER), addedAt
+```
+
+`classes/{classId}.accountId` não muda; só passa a ser validado contra `accounts/{accountId}/members` em vez de `accountId == uid` diretamente. Isso é o benefício concreto de ter renomeado `teacherId` para `accountId` desde a Fase 0, em vez de esperar o portal admin existir.
+
+---
+
+## 8. Estrutura de repositório proposta
 
 ```text
 elp/
@@ -296,7 +335,8 @@ elp/
 │       ├── 0005-security-rules-como-camada-de-autorizacao.md
 │       ├── 0006-modelagem-de-attempts-e-answers.md
 │       ├── 0007-estrategia-drag-and-drop.md
-│       └── 0008-estrategia-de-deploy-e-ambientes.md
+│       ├── 0008-estrategia-de-deploy-e-ambientes.md
+│       └── 0009-multi-tenancy-e-instanciamento-para-professores-independentes.md
 └── .github/workflows/
     ├── ci.yml
     └── deploy.yml
@@ -306,16 +346,17 @@ elp/
 
 ---
 
-## 8. Dependências e riscos
+## 9. Dependências e riscos
 
 - **Bloqueio real:** as "Questões em Aberto" da seção 29 do SDD afetam diretamente o modelo de dados da seção 3 deste documento (principalmente: atividade pertencer a múltiplas salas, cálculo de nota, visibilidade de resposta correta). Recomendo fechar essas respostas **antes** de iniciar a Fase 3 — ver `docs/OPEN-QUESTIONS.md` com sugestões de default.
 - **Risco técnico:** Firestore não tem transações que abranjam mais que 500 documentos nem full-text search nativo — relevante já a partir da Fase 3 (banco de vocabulário/textos, Fase 3 do roadmap).
 - **Risco de custo:** Cloud Functions com muitas invocações (ex.: salvar progresso a cada resposta) pode gerar custo relevante em escala — mitigar com debounce no client antes de escrever, e mover para escrita direta protegida por regra (já contemplado na Fase 4).
+- **Risco de produto:** construir o portal admin (Fase 8) cedo demais, antes de haver professores pagantes reais, tende a ser esforço mal direcionado — o ADR-009 resolve o essencial (nomenclatura de dados) a custo baixo agora exatamente para permitir adiar a Fase 8 sem custo de migração depois.
 
 ---
 
-## 9. Próximos passos imediatos
+## 10. Próximos passos imediatos
 
 1. Validar (ou aceitar os defaults sugeridos em `docs/OPEN-QUESTIONS.md`) as questões em aberto que bloqueiam a Fase 3.
-2. Confirmar acesso ao repositório GitHub para o primeiro push (estrutura já commitada localmente).
-3. Iniciar Fase 0.
+2. Repositório GitHub confirmado: `https://github.com/GScandelari/ELP.git` — falta autenticação para o primeiro push (estrutura já commitada localmente).
+3. Iniciar Fase 0, já usando `accountId` (não `teacherId`) no schema desde o primeiro commit de código.

@@ -67,12 +67,17 @@ Cada item: **pergunta original** → **impacto técnico se a resposta mudar** �
 - **Sugestão:** não no MVP — fora de escopo explícito do SDD (seção 1.4) e do roadmap original (Fase 3).
 
 ### Haverá colaboração entre professores?
-- **Impacto:** se sim, `Class.teacherId` (singular) precisaria virar uma lista/subcoleção de professores.
-- **Sugestão:** não no MVP — SDD modela `teacher_id` no singular (seção 7.2), consistente com "não" aqui.
+- **Impacto:** se sim, `Class.accountId` (singular) precisaria virar uma lista/subcoleção de professores por conta.
+- **Sugestão:** não no MVP — mas **atualizada** após a decisão de virar produto comercial (ver ADR-009): o campo já se chama `accountId` em vez de `teacherId` desde a Fase 0 exatamente para que essa evolução (uma conta = uma escola/equipe com vários professores) seja aditiva depois, via `accounts/{accountId}/members`, sem migração de `classes`. Continua não sendo construído até haver demanda comercial real.
 
 ### Haverá administrador no MVP?
 - **Impacto:** SDD seção 1.3 (escopo do MVP) não lista telas de admin; seção 2.3 descreve Admin como "persona futura".
-- **Sugestão:** não como papel operacional com UI própria; manter suporte técnico ao papel `admin` nas Security Rules (para dar suporte via console/Admin SDK), sem construir portal de admin na Fase 0–7.
+- **Sugestão:** não como papel operacional com UI própria nas Fases 0–7; manter suporte técnico ao papel `admin` nas Security Rules (para dar suporte via console/Admin SDK). **Atualizada:** com a intenção de virar produto vendido a professores independentes, o portal admin (gestão de contas, suporte, provisionamento) passa a ser um roadmap explícito — "Fase 8 — Admin & Operação SaaS" em `IMPLEMENTATION-PLAN.md` seção 7 — mas continua fora do MVP, a ser priorizado quando houver professores pagantes reais.
+
+### A plataforma será single-tenant ou multi-tenant (vários professores independentes num mesmo deploy)?
+- **Novo, adicionado após definição de que o projeto vira produto comercial.**
+- **Impacto:** já resolvido pela modelagem existente — `classes/{classId}.accountId` (antes `teacherId`) já isola dados por professor via Security Rules, então múltiplos professores independentes já podem coexistir num único deploy Firebase sem mudança de arquitetura.
+- **Sugestão:** modelo pooled/multi-tenant compartilhado (um conjunto de projetos Firebase para todos os clientes), não um projeto Firebase dedicado por professor — ver ADR-009 para o racional completo. Isolamento físico por cliente fica como possível tier enterprise muito mais à frente, não uma necessidade conhecida hoje.
 
 ### Qual estratégia de hospedagem será utilizada?
 - **Status:** **já respondida** por este plano — Firebase Hosting + Cloud Functions (ver ADR-008). A única decisão do stakeholder que gerou este documento.
