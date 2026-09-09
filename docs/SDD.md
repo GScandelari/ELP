@@ -1,9 +1,11 @@
 # SDD — English Learning Classroom
 
-**Versão:** 0.1.0  
+**Versão:** 0.2.0  
 **Status:** Draft / Baseline para descoberta e modelagem  
 **Tipo:** Software Design Document (SDD)  
 **Objetivo:** Especificar uma plataforma web de apoio ao ensino de inglês, com foco em leitura, escrita, vocabulário, significado, tradução/localização e avaliação.
+
+**Atualização 0.2.0:** incorporadas duas frentes transversais — (a) landing page pública para divulgação da plataforma (ADR-010) e (b) conformidade com a LGPD desde o desenvolvimento, incluindo o tratamento de dados de alunos menores de idade (Art. 14 — ADR-011). As mudanças estão nas seções 1.3, 2, 3, 4, 15, 19, 22, 25, 29 e 31.
 
 ---
 
@@ -63,7 +65,10 @@ O MVP deverá contemplar:
 - submissão de respostas;
 - avaliação automática das atividades objetivas;
 - visualização de resultados;
-- acompanhamento básico pelo professor.
+- acompanhamento básico pelo professor;
+- landing page pública com informações do produto e páginas legais (privacidade, termos, cookies) — ver ADR-010;
+- aviso de cookies na primeira visita (apenas cookies essenciais no MVP) — ver ADR-011;
+- conformidade com a LGPD: base legal de tratamento, transparência, atendimento aos direitos do titular e tratamento diferenciado de dados de menores (Art. 14) — ver ADR-011.
 
 ## 1.4 Fora do escopo inicial
 
@@ -123,13 +128,27 @@ Responsabilidades potenciais:
 - auditoria;
 - métricas da plataforma.
 
+## 2.4 Responsável legal
+
+Pai, mãe ou responsável por um aluno menor de idade. Não acessa a plataforma diretamente no MVP, mas é quem fornece o consentimento (Art. 14 da LGPD) para o tratamento dos dados do aluno menor. A coleta e a guarda desse consentimento são intermediadas pelo professor ou pela escola (ver ADR-011).
+
+### Necessidades
+
+- entender quais dados do menor são tratados e para quê;
+- poder solicitar acesso, correção ou exclusão dos dados do menor;
+- ter um canal para falar com o encarregado (DPO).
+
+## 2.5 Encarregado (DPO)
+
+Pessoa indicada como canal de comunicação entre a controladora, os titulares e a ANPD (Art. 41 da LGPD). Papel operacional/jurídico, não um usuário de sistema no MVP; seu contato é publicado na Política de Privacidade.
+
 ---
 
 # 3. Requisitos Funcionais
 
 ## RF-001 — Cadastro
 
-O sistema deve permitir o cadastro de usuários.
+O sistema deve permitir o cadastro de usuários. O fluxo é detalhado em RF-021 (verificação de idade e consentimento parental) e RF-019 (aceite de textos legais).
 
 ## RF-002 — Autenticação
 
@@ -263,6 +282,34 @@ Professor poderá visualizar resultados por:
 - atividade;
 - aluno.
 
+## RF-019 — Consentimento, cookies e textos legais
+
+O sistema deve:
+
+- exibir um aviso de cookies na primeira visita (no MVP, informativo — apenas cookies essenciais são usados);
+- disponibilizar páginas públicas de Política de Privacidade, Termos de Uso e Política de Cookies;
+- exigir aceite explícito (checkbox não pré-marcado) dos Termos e da Política de Privacidade no cadastro;
+- registrar o consentimento com data/hora, identificação do titular e versão do texto aceito.
+
+## RF-020 — Direitos do titular
+
+O sistema deve permitir que o usuário autenticado:
+
+- exporte seus dados pessoais em formato legível por máquina (portabilidade);
+- corrija dados cadastrais incorretos;
+- solicite a exclusão da própria conta, com anonimização das tentativas/respostas associadas (preservando estatística agregada da turma).
+
+Para dados de alunos menores, as solicitações do responsável legal são atendidas via professor/escola ou pelo canal do encarregado.
+
+## RF-021 — Cadastro com verificação de idade e consentimento parental
+
+No cadastro:
+
+- o professor aceita Termos e Política de Privacidade em nome próprio;
+- o aluno informa data de nascimento (ou faixa etária);
+- aluno maior de 18 anos completa o cadastro com aceite próprio;
+- aluno menor de 18 anos não faz cadastro self-service: a conta é criada/vinculada pelo professor ou escola, que declara ter obtido o consentimento do responsável legal, usando o modelo de termo fornecido pela plataforma (ver ADR-011).
+
 ---
 
 # 4. Requisitos Não Funcionais
@@ -309,6 +356,20 @@ A interface deverá buscar conformidade com boas práticas WCAG, especialmente:
 - labels;
 - feedback visual e textual;
 - compatibilidade com tecnologias assistivas.
+
+## RNF-008 — Privacidade e proteção de dados (LGPD)
+
+O desenvolvimento deverá observar a Lei 13.709/2018 desde o design (privacy by design):
+
+- toda operação de tratamento de dados pessoais deve ter base legal identificada e registrada;
+- coleta limitada ao mínimo necessário à finalidade (minimização), com atenção reforçada para dados de menores (Art. 14);
+- prazos de retenção definidos por categoria de dado, com expurgo/anonimização automatizados;
+- Relatório de Impacto à Proteção de Dados Pessoais (RIPD) elaborado antes do lançamento;
+- registro das operações de tratamento mantido e versionado (`docs/lgpd/`);
+- plano de resposta a incidentes com notificação à ANPD e aos titulares;
+- transferência internacional de dados (infraestrutura Firebase) amparada em hipótese do Art. 33 e documentada.
+
+Detalhamento em ADR-011.
 
 ---
 
@@ -1031,6 +1092,10 @@ VIEW_OWN_RESULT
 
 Terá permissões administrativas futuras.
 
+## Responsável legal / Encarregado
+
+Não são papéis com credencial de acesso no MVP. O responsável legal exerce os direitos do titular sobre os dados do aluno menor por meio do professor/escola ou do canal do encarregado (ver seção 19 — Privacidade, e ADR-011).
+
 ---
 
 # 16. Regras de Negócio
@@ -1205,6 +1270,16 @@ Implementar:
 - headers de segurança;
 - logs de auditoria.
 
+## Privacidade
+
+O tratamento de dados pessoais segue a LGPD (RNF-008, ADR-011):
+
+- base legal por operação (execução de contrato, legítimo interesse ou consentimento);
+- consentimento específico do responsável legal para alunos menores (Art. 14);
+- direitos do titular atendidos em até 15 dias (RF-020);
+- logs de auditoria não devem registrar dados pessoais além do necessário;
+- acesso de suporte a dados de um professor sempre auditado, nunca silencioso.
+
 ---
 
 # 20. Observabilidade
@@ -1325,6 +1400,16 @@ Principalmente:
 - [ ] Professor consegue visualizar resultados da turma.
 - [ ] Professor consegue visualizar desempenho individual.
 
+## Privacidade e conformidade
+
+- [ ] Landing page pública no ar com páginas de privacidade, termos e cookies.
+- [ ] Aviso de cookies exibido na primeira visita.
+- [ ] Cadastro exige aceite de Termos e Política de Privacidade, com registro versionado do consentimento.
+- [ ] Aluno menor de idade só é cadastrado via professor/escola, com declaração de consentimento do responsável.
+- [ ] Usuário consegue exportar e excluir seus dados pelo portal.
+- [ ] RIPD concluído e revisado antes do go-live.
+- [ ] Registro das operações de tratamento (`docs/lgpd/`) preenchido.
+
 ---
 
 # 23. Backlog Inicial
@@ -1443,7 +1528,11 @@ ADR-007 — Modelo do Activity Engine
 ADR-008 — Estratégia de persistência das respostas
 ADR-009 — Estratégia de drag-and-drop
 ADR-010 — Estratégia de deploy
+ADR-011 — Landing page e site institucional
+ADR-012 — Conformidade com a LGPD
 ```
+
+> Nota: os ADRs formais foram escritos e renumerados em `docs/adr/` ao adotar Firebase (ver `docs/adr/0001` em diante). O mapeamento não é 1:1 com a lista acima — a landing page está em `docs/adr/0010` e a LGPD em `docs/adr/0011`.
 
 ---
 
@@ -1561,9 +1650,9 @@ Mudanças relevantes deverão:
 
 # 29. Questões em Aberto
 
-As seguintes decisões precisam ser definidas antes do design detalhado:
+As seguintes decisões precisam ser definidas antes do design detalhado (ver `docs/OPEN-QUESTIONS.md` para o status e os defaults sugeridos de cada uma, incluindo as questões de LGPD adicionadas na v0.2.0):
 
-- O cadastro será aberto ou por convite?
+- O cadastro será aberto ou por convite? *(parcial: aberto para professores; aluno menor de idade só via professor/escola — ver ADR-011 e RF-021)*
 - Professor poderá compartilhar uma atividade entre salas?
 - Uma atividade poderá pertencer a mais de uma sala?
 - Aluno poderá sair de uma sala?
@@ -1640,6 +1729,8 @@ Uma funcionalidade será considerada concluída quando:
 - [ ] testes de integração implementados quando aplicável;
 - [ ] critérios de aceitação atendidos;
 - [ ] controle de autorização validado;
+- [ ] impacto em privacidade avaliado (base legal, minimização, retenção) quando a mudança trata dados pessoais;
+- [ ] textos legais e registro de tratamento (`docs/lgpd/`) atualizados quando aplicável;
 - [ ] logs e tratamento de erros implementados;
 - [ ] revisão de código concluída;
 - [ ] documentação atualizada.
@@ -1652,4 +1743,4 @@ Uma funcionalidade será considerada concluída quando:
 
 Este documento representa a proposta inicial de arquitetura, domínio e requisitos. Decisões ainda não validadas devem ser tratadas como hipóteses e não como requisitos definitivos.
 
-**Próximo marco:** validação dos requisitos, respostas às questões em aberto e elaboração dos diagramas UML detalhados.
+**Próximo marco:** validação dos requisitos, respostas às questões em aberto (incluindo as de LGPD), designação do encarregado (DPO), abertura do RIPD e elaboração dos diagramas UML detalhados.

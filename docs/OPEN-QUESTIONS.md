@@ -8,7 +8,7 @@ Cada item: **pergunta original** → **impacto técnico se a resposta mudar** �
 
 ### O cadastro será aberto ou por convite?
 - **Impacto:** define se `createUser` precisa de validação adicional (ex.: domínio de e-mail institucional) e se há tela pública de cadastro.
-- **Sugestão:** cadastro aberto para professores e alunos no MVP, sem convite — mais simples de validar o produto. Fácil de restringir depois com Security Rules adicionais.
+- **Sugestão:** cadastro aberto para professores no MVP, sem convite. **Atualizada (LGPD, ADR-011):** aluno **maior de 18** pode se auto-cadastrar; aluno **menor de 18 não faz cadastro self-service** — a conta é criada/vinculada pelo professor ou escola, que declara ter o consentimento do responsável legal (RF-021).
 
 ### Professor poderá compartilhar uma atividade entre salas?
 - **Impacto:** **bloqueante para a modelagem da Fase 3.** Se sim, `Activity` não pode viver como subcoleção de `classes/{classId}` (ver seção 3.2 do plano de implementação) — precisa ser coleção top-level com relação N:N para salas.
@@ -81,6 +81,38 @@ Cada item: **pergunta original** → **impacto técnico se a resposta mudar** �
 
 ### Qual estratégia de hospedagem será utilizada?
 - **Status:** **já respondida** por este plano — Firebase Hosting + Cloud Functions (ver ADR-008). A única decisão do stakeholder que gerou este documento.
+
+---
+
+## Questões de LGPD (adicionadas na v0.2.0, ver ADR-011)
+
+### Quem será o encarregado (DPO)?
+- **Impacto:** obrigatório ter um canal do encarregado publicado na Política de Privacidade (Art. 41). Pode ser uma pessoa interna ou um serviço terceirizado ("DPO as a service").
+- **Sugestão:** no início, o próprio responsável pelo projeto acumula a função, com um e-mail dedicado (`privacidade@...`); reavaliar a contratação de serviço especializado quando houver volume de titulares.
+
+### Qual a base legal para tratar dados de alunos inseridos pelo professor?
+- **Impacto:** define se cada aluno precisa consentir individualmente ou se o professor/escola ampara o tratamento por legítimo interesse educacional.
+- **Sugestão:** legítimo interesse do professor/escola para o fim pedagógico (Art. 7º, IX) para alunos maiores; para menores, consentimento do responsável legal (Art. 14) sempre. Confirmar com o jurídico e permitir configuração por perfil de cliente (escola x professor autônomo).
+
+### Como verificar o consentimento do responsável legal de um aluno menor?
+- **Impacto:** define o fluxo de RF-021 e o valor probatório do registro em `consents/{uid}`.
+- **Sugestão MVP:** declaração do professor/escola de que obteve e guarda o termo assinado (modelo fornecido pela plataforma), registrada com data/hora. **Reforço opcional:** e-mail de confirmação enviado ao responsável. Verificação documental forte (upload do termo) fica para depois.
+
+### Quais os prazos de retenção por categoria de dado?
+- **Impacto:** parametriza a função `purgeExpiredData` e a `politica-de-retencao.md`.
+- **Sugestão:** dados de conta enquanto a conta existir + 30 dias; tentativas/respostas idem, depois anonimizadas; registro de consentimento 5 anos; logs de auditoria 6 meses. Confirmar com o jurídico.
+
+### Confirmar a região `southamerica-east1` (São Paulo) para Firestore/Functions?
+- **Impacto:** **decisão irreversível**, tomada na criação dos projetos (Fase 0). Afeta latência e a disponibilidade de alguns recursos do Firebase que chegam mais tarde a São Paulo.
+- **Sugestão:** sim — reduz latência no Brasil e simplifica a análise de transferência internacional. Aceitar o trade-off de features novas chegarem um pouco depois.
+
+### Todo menor de 18 entra pelo mesmo fluxo, ou diferenciar criança (<12) de adolescente (12–17)?
+- **Impacto:** o ECA distingue criança e adolescente; a LGPD Art. 14 fala em "crianças", mas a ANPD recomenda cautela também com adolescentes.
+- **Sugestão:** tratar todo menor de 18 pelo fluxo com responsável legal no MVP (mais simples e conservador); diferenciar só se houver demanda.
+
+### A plataforma oferecerá contrato de operador (DPA) para escolas clientes?
+- **Impacto:** necessário para vender para escolas — elas são controladoras e precisam de um DPA com a plataforma.
+- **Sugestão:** ter um modelo de DPA pronto antes do primeiro cliente-escola; não bloqueia professores autônomos.
 
 ---
 

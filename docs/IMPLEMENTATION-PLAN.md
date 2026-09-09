@@ -1,8 +1,8 @@
 # Plano de Implementação — ELP (English Learning Platform) sobre Firebase
 
-**Versão:** 0.2.0
+**Versão:** 0.3.0
 **Status:** Draft — depende de validação das questões em aberto (ver seção 9)
-**Baseado em:** [`SDD.md`](./SDD.md) v0.1.0
+**Baseado em:** [`SDD.md`](./SDD.md) v0.2.0
 **Objetivo deste documento:** traduzir o SDD original (que sugeria Next.js + FastAPI + PostgreSQL) para uma arquitetura 100% Firebase, e organizar a implementação em fases sequenciais e testáveis.
 
 ---
@@ -18,6 +18,8 @@ O SDD original (seção 5 e 6) propõe um monólito modular com backend próprio
 Essas mudanças **substituem** as decisões implícitas em ADR-002, ADR-003, ADR-004, ADR-005 e ADR-006 listadas na seção 25 do SDD. Ver `docs/adr/` para o registro formal.
 
 > **Atualização de escopo de produto:** este projeto passou a ser desenhado para virar um produto comercial vendido a professores independentes, com um portal admin futuro para suporte e provisionamento. Isso não muda o escopo do MVP (Fases 0–7 abaixo continuam as mesmas), mas afeta nomenclatura do modelo de dados desde já e adiciona uma fase pós-MVP — ver ADR-009 e seção 10.
+
+> **Atualização 0.3.0 — landing page e LGPD:** o MVP passa a incluir (a) uma landing page pública para divulgação (ADR-010) e (b) conformidade com a LGPD desde o desenvolvimento, com tratamento diferenciado de dados de alunos menores de idade (ADR-011). Impacto nas fases: a região dos projetos Firebase é fixada em `southamerica-east1` na Fase 0 (decisão irreversível); a Fase 1 ganha age gate e registro de consentimento; a Fase 6 ganha exportação/exclusão de dados e banner de cookies; a Fase 7 ganha o RIPD como bloqueio de go-live. Detalhes no ADR-011 e nos artefatos de `docs/lgpd/`.
 
 ---
 
@@ -75,6 +77,8 @@ Essas mudanças **substituem** as decisões implícitas em ADR-002, ADR-003, ADR
 | Armazenamento de arquivos (futuro) | Object Storage | Cloud Storage for Firebase |
 | Observabilidade | logs/métricas custom | Cloud Logging, Cloud Monitoring, Error Reporting |
 | Deploy | a definir | Firebase Hosting + Cloud Functions, ambientes dev/staging/prod via projetos Firebase separados |
+| Landing page | não previsto no SDD | Grupo de rotas `(marketing)` no próprio `apps/web`, SSG, servido pelo Firebase Hosting — ver ADR-010 |
+| Privacidade / LGPD | "segurança" genérica | Base legal por operação, registro de consentimento (`consents/{uid}`), cookies essenciais + banner informativo, funções de exportação/anonimização — ver ADR-011 |
 
 ### 2.2 Por que manter Cloud Functions "callable" para escrita, em vez de deixar o client escrever direto no Firestore
 
@@ -85,6 +89,8 @@ Regra de negócio crítica do SDD (RN-008): *"Resultado objetivo deve ser calcul
 ## 3. Modelo de dados Firestore (redesenho do modelo relacional)
 
 O modelo relacional do SDD (seção 7 e 18) vira a seguinte estrutura de coleções. Este é o ponto do plano com mais risco de retrabalho se mudar depois — recomendo validar antes da Fase 2.
+
+> **Região:** todos os recursos (Firestore, Functions) são criados em `southamerica-east1` (São Paulo) — decida na Fase 0, porque a localização do Firestore **não pode ser alterada depois**. Reduz latência para usuários no Brasil e diminui a superfície de transferência internacional de dados na análise de LGPD (ADR-011).
 
 ```text
 users/{uid}
@@ -97,6 +103,15 @@ accounts/{accountId}
   # novo, ver ADR-009. No MVP, accountId == uid do professor (1:1),
   # mas o portal admin (Fase 8) já encontra uma âncora pronta para
   # suspender/gerenciar contas sem precisar migrar dados depois
+
+consents/{uid}/records/{recordId}
+  type (TERMS | PRIVACY_POLICY | COOKIES | GUARDIAN_CONSENT),
+  textVersion, grantedAt, grantedByRole, grantedByUid, evidence
+  # registro de consentimento exigido pela LGPD (ver ADR-011).
+  # GUARDIAN_CONSENT é a declaração do professor de que obteve o
+  # consentimento do responsável legal de um aluno menor; `evidence`
+  # aponta para o termo assinado guardado pelo professor/escola.
+  # gravado só por Cloud Function (callable); documento imutável
 
 enrollmentCodes/{code}
   classId
@@ -152,6 +167,7 @@ classes/{classId}/resultsSummary/{studentId}
 - Se uma atividade puder pertencer a mais de uma sala (pergunta em aberto do SDD), o modelo acima precisa mudar de `classes/{classId}/activities` para uma coleção top-level `activities` com uma subcoleção `activityClasses` — **decisão bloqueante para a Fase 3**, não deve ser assumida.
 - Se atividades tiverem peso, o campo `weight` entra em `Activity`; se houver nota percentual **e** pontos, `resultsSummary` precisa guardar os dois.
 - `teacherId` foi renomeado para `accountId` em `classes/{classId}` (ver ADR-009) para acomodar a visão de produto comercial — decisão já tomada, de baixo custo, não bloqueia nenhuma fase.
+- Exclusão de conta (RF-020) **anonimiza** `attempts`/`answers` em vez de apagar: `studentId` é substituído por um token não reversível e os identificadores diretos saem, preservando as agregações de `resultsSummary`. Definir isso agora evita reprocessar dados históricos depois — ver ADR-011.
 
 ---
 
@@ -177,6 +193,11 @@ match /attempts/{attemptId} {
               || isAccountOwnerOfClass(resource.data.classId);
   allow create: if hasRole('student'); // validação de regras de negócio (max_attempts) fica na Cloud Function
   allow update: if false; // toda escrita de submissão/avaliação passa por Cloud Function com Admin SDK
+}
+
+match /consents/{uid}/records/{recordId} {
+  allow read: if request.auth.uid == uid || hasRole('admin');
+  allow write: if false; // gravado só por Cloud Function (callable) no aceite — registro imutável
 }
 ```
 
@@ -210,12 +231,15 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 
 ### Fase 0 — Fundação (1–2 semanas)
 
-- Criar 3 projetos Firebase: `elp-dev`, `elp-staging`, `elp-prod`.
-- Estruturar monorepo: `apps/web` (Next.js), `functions/` (Cloud Functions), `docs/`.
+- Criar 3 projetos Firebase: `elp-dev`, `elp-staging`, `elp-prod`, **todos com Firestore/Functions na região `southamerica-east1`** (irreversível — ver seção 3).
+- Aceitar o Adendo de Tratamento de Dados (DPA) do Google Cloud em cada projeto e arquivar a evidência em `docs/lgpd/dpa/`.
+- Estruturar monorepo: `apps/web` (Next.js, incluindo o grupo de rotas `(marketing)` da landing — ADR-010), `functions/`, `docs/`.
 - Configurar Firebase Emulator Suite (Auth, Firestore, Functions, Hosting) para desenvolvimento local sem custo.
 - Pipeline CI (GitHub Actions): lint + testes + preview channel do Firebase Hosting em cada PR.
 - Formalizar as ADRs pendentes (seção 25 do SDD, adaptadas — ver `docs/adr/`).
-- **Critério de saída:** `firebase emulators:start` sobe os 4 serviços e um "hello world" do Next.js conversa com o emulador de Auth.
+- Shell da landing page no ar (estrutura + páginas legais como rascunho versionado); conteúdo final fica para a Fase 7.
+- Designar o encarregado (DPO) e abrir o RIPD (`docs/lgpd/ripd.md`) como documento vivo.
+- **Critério de saída:** `firebase emulators:start` sobe os 4 serviços, um "hello world" do Next.js conversa com o emulador de Auth, e `elp-dev` está confirmado na região correta.
 
 ### Fase 1 — Identity & Access (2–3 semanas)
 
@@ -223,8 +247,10 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 - Cloud Function que espelha `role` escolhido no cadastro como custom claim.
 - Documento `users/{uid}` criado automaticamente no cadastro.
 - Telas de registro/login/logout (RF-001, RF-002).
-- Security Rules básicas de `users/{uid}` (RF-003).
-- **Critério de saída:** RF-001 a RF-003 e UC-001 do SDD passam em teste E2E.
+- Age gate no cadastro do aluno e fluxo de vínculo de aluno menor pelo professor/escola (RF-021).
+- Textos legais versionados (`apps/web/content/`) e função `recordConsent` (callable) gravando `consents/{uid}` no aceite (RF-019).
+- Security Rules básicas de `users/{uid}` e `consents/{uid}` (RF-003).
+- **Critério de saída:** RF-001 a RF-003, RF-019, RF-021 e UC-001 do SDD passam em teste E2E.
 
 ### Fase 2 — Salas / Classes (2 semanas)
 
@@ -257,18 +283,25 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 - Telas de acompanhamento por sala/atividade/aluno (RF-018), respeitando RN-010.
 - **Critério de saída:** UC-007 completo sem necessidade de ler todos os `attempts` no client.
 
-### Fase 6 — Observabilidade, Segurança e Hardening (2 semanas)
+### Fase 6 — Observabilidade, Segurança, Privacidade e Hardening (2–3 semanas)
 
 - Cloud Logging estruturado + Error Reporting nas Cloud Functions (RNF-006).
 - App Check habilitado (proteção contra abuso das funções `callable`).
 - Revisão completa de Security Rules + suíte de testes de regras.
 - Auditoria de acessibilidade (RNF-007): navegação por teclado, contraste, labels — especialmente nos exercícios de drag-and-drop.
+- Funções `exportUserData` e `deleteUserData` (anonimização de `attempts`/`answers`) e telas de direitos do titular no portal (RF-020).
+- Componente `<CookieConsent>` (categorias necessário/analytics/marketing; só "necessário" ativo no MVP) + página `/cookies` (RF-019).
+- Cloud Function agendada `purgeExpiredData` aplicando a política de retenção (ADR-011).
+- Preencher o registro das operações de tratamento (`docs/lgpd/registro-de-tratamento.md`).
 - Testes E2E cobrindo o cenário da seção 21 do SDD (Playwright).
-- **Critério de saída:** todos os itens da seção 22 (Critérios de Aceitação do MVP) do SDD verificados.
+- **Critério de saída:** todos os itens da seção 22 (Critérios de Aceitação do MVP) do SDD verificados, incluindo o grupo "Privacidade e conformidade".
 
 ### Fase 7 — Beta / Lançamento do MVP
 
 - Deploy em `elp-prod`, domínio customizado no Firebase Hosting.
+- Conteúdo final da landing page e revisão jurídica dos textos legais (Política de Privacidade, Termos, Cookies).
+- **RIPD concluído, revisado e assinado — bloqueio de go-live** (tratamento de dados de menores exige, ver ADR-011).
+- Plano de resposta a incidentes documentado e canal do encarregado publicado.
 - Onboarding de professores piloto.
 - Monitoramento ativo na primeira semana (Cloud Monitoring + alertas).
 
@@ -314,12 +347,15 @@ accounts/{accountId}/members/{uid}
 elp/
 ├── apps/
 │   └── web/                 # Next.js (Teacher Portal + Student Portal)
+│       ├── app/(marketing)/  # landing page pública + páginas legais (ADR-010)
+│       └── content/          # textos institucionais e legais em MDX, versionados
 ├── functions/
 │   └── src/
-│       ├── auth/             # onUserCreate, custom claims
+│       ├── auth/             # onUserCreate, custom claims, recordConsent
 │       ├── classes/          # createClass, joinClassByCode
 │       ├── activities/       # publishActivity, activity-types/*
-│       └── attempts/         # createAttempt, submitAttempt, evaluate
+│       ├── attempts/         # createAttempt, submitAttempt, evaluate
+│       └── privacy/          # exportUserData, deleteUserData, purgeExpiredData (ADR-011)
 ├── firestore.rules
 ├── firestore.indexes.json
 ├── firebase.json
@@ -327,6 +363,7 @@ elp/
 │   ├── SDD.md                 # este documento de origem
 │   ├── IMPLEMENTATION-PLAN.md # este arquivo
 │   ├── OPEN-QUESTIONS.md
+│   ├── lgpd/                  # RIPD, registro de tratamento, evidências de DPA (ADR-011)
 │   └── adr/
 │       ├── 0001-arquitetura-serverless-firebase.md
 │       ├── 0002-firestore-como-banco-de-dados.md
@@ -336,7 +373,9 @@ elp/
 │       ├── 0006-modelagem-de-attempts-e-answers.md
 │       ├── 0007-estrategia-drag-and-drop.md
 │       ├── 0008-estrategia-de-deploy-e-ambientes.md
-│       └── 0009-multi-tenancy-e-instanciamento-para-professores-independentes.md
+│       ├── 0009-multi-tenancy-e-instanciamento-para-professores-independentes.md
+│       ├── 0010-landing-page-e-site-institucional.md
+│       └── 0011-conformidade-com-a-lgpd.md
 └── .github/workflows/
     ├── ci.yml
     └── deploy.yml
@@ -352,11 +391,15 @@ elp/
 - **Risco técnico:** Firestore não tem transações que abranjam mais que 500 documentos nem full-text search nativo — relevante já a partir da Fase 3 (banco de vocabulário/textos, Fase 3 do roadmap).
 - **Risco de custo:** Cloud Functions com muitas invocações (ex.: salvar progresso a cada resposta) pode gerar custo relevante em escala — mitigar com debounce no client antes de escrever, e mover para escrita direta protegida por regra (já contemplado na Fase 4).
 - **Risco de produto:** construir o portal admin (Fase 8) cedo demais, antes de haver professores pagantes reais, tende a ser esforço mal direcionado — o ADR-009 resolve o essencial (nomenclatura de dados) a custo baixo agora exatamente para permitir adiar a Fase 8 sem custo de migração depois.
+- **Risco jurídico (LGPD):** tratar dados de alunos menores sem base legal clara, sem consentimento do responsável e sem RIPD é exposição direta desde o primeiro usuário real. Mitigação: RIPD aberto na Fase 0, consentimento registrado desde a Fase 1, RIPD assinado como bloqueio de go-live na Fase 7 (ADR-011).
+- **Risco irreversível:** a região do Firestore não muda depois de criada. Escolher `southamerica-east1` na Fase 0; um projeto criado na região errada precisa ser recriado do zero.
+- **Risco de cronograma:** a revisão jurídica dos textos legais e do RIPD é caminho crítico para a Fase 7 e depende de terceiro (advogado/consultoria) — contratar cedo.
 
 ---
 
 ## 10. Próximos passos imediatos
 
-1. Validar (ou aceitar os defaults sugeridos em `docs/OPEN-QUESTIONS.md`) as questões em aberto que bloqueiam a Fase 3.
-2. Repositório GitHub confirmado: `https://github.com/GScandelari/ELP.git` — falta autenticação para o primeiro push (estrutura já commitada localmente).
-3. Iniciar Fase 0, já usando `accountId` (não `teacherId`) no schema desde o primeiro commit de código.
+1. Validar (ou aceitar os defaults sugeridos em `docs/OPEN-QUESTIONS.md`) as questões em aberto que bloqueiam a Fase 3 e as novas questões de LGPD.
+2. Repositório GitHub sincronizado: `https://github.com/GScandelari/ELP.git` (push inicial feito).
+3. Designar o encarregado (DPO) e abrir o RIPD como documento vivo em `docs/lgpd/`.
+4. Iniciar Fase 0, criando os projetos Firebase já em `southamerica-east1` e usando `accountId` (não `teacherId`) no schema desde o primeiro commit de código.
