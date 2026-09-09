@@ -1,11 +1,13 @@
 # SDD — English Learning Classroom
 
-**Versão:** 0.2.0  
+**Versão:** 0.3.0  
 **Status:** Draft / Baseline para descoberta e modelagem  
 **Tipo:** Software Design Document (SDD)  
 **Objetivo:** Especificar uma plataforma web de apoio ao ensino de inglês, com foco em leitura, escrita, vocabulário, significado, tradução/localização e avaliação.
 
 **Atualização 0.2.0:** incorporadas duas frentes transversais — (a) landing page pública para divulgação da plataforma (ADR-010) e (b) conformidade com a LGPD desde o desenvolvimento, incluindo o tratamento de dados de alunos menores de idade (Art. 14 — ADR-011). As mudanças estão nas seções 1.3, 2, 3, 4, 15, 19, 22, 25, 29 e 31.
+
+**Atualização 0.3.0:** questões em aberto (seção 29) respondidas — decisões registradas em `docs/OPEN-QUESTIONS.md`. Impacto de modelo: (a) a **atividade é reutilizável em várias salas** — deixa de ser filha de uma sala e passa a ser um repositório do professor, aplicada às turmas via *atribuição* (ADR-012); (b) **nota e gabarito não são exibidos ao aluno até a liberação** dos resultados (ADR-013); (c) **sem administrador com UI no MVP** — onboarding e suporte por procedimento manual documentado (`docs/operations/onboarding-mvp.md`). Seções afetadas: 7, 11, 12, 13, 14, RF-008/010/011/012/017, RN-005/006/007 e novas RN-011/RN-012.
 
 ---
 
@@ -197,7 +199,7 @@ Professor deve poder adicionar alunos a uma sala.
 
 ## RF-008 — Criar atividade
 
-Professor deve poder criar atividades associadas a uma sala.
+Professor deve poder criar atividades no seu **repositório de atividades**, independentes de sala. Uma atividade do repositório pode depois ser **atribuída a uma ou mais salas** (ver RF-012 e ADR-012).
 
 ## RF-009 — Tipos de atividade
 
@@ -220,7 +222,7 @@ Tipos futuros:
 
 ## RF-010 — Configurar atividade
 
-Professor deve poder definir:
+No **repositório** (propriedades da atividade em si):
 
 - título;
 - instruções;
@@ -228,25 +230,39 @@ Professor deve poder definir:
 - questões;
 - respostas corretas;
 - pontuação;
-- dificuldade;
-- possibilidade de tentativa;
+- dificuldade.
+
+Na **atribuição a uma sala** (propriedades que variam por turma):
+
 - prazo;
-- status de publicação.
+- número de tentativas permitidas;
+- política de liberação de resultados (ver RN-011);
+- estado (`PUBLISHED` / `CLOSED`).
 
 ## RF-011 — Publicar atividade
 
-Atividades poderão estar nos estados:
+Há dois ciclos de estado distintos (ver seção 12 e ADR-012):
+
+- **Atividade no repositório do professor:**
 
 ```text
-DRAFT
-PUBLISHED
-CLOSED
+DRAFT      (em edição)
+READY      (pronta para atribuir)
 ARCHIVED
 ```
 
+- **Atribuição de uma atividade a uma sala:**
+
+```text
+PUBLISHED  (visível aos alunos da sala)
+CLOSED     (encerrada; sem novas tentativas)
+```
+
+Publicar = atribuir uma atividade `READY` a uma sala, com prazo e configuração de tentativas próprios daquela sala.
+
 ## RF-012 — Resolver atividade
 
-Aluno deve poder iniciar uma atividade publicada e disponível.
+Aluno deve poder iniciar uma atividade **atribuída à sua sala** e disponível (atribuição em estado `PUBLISHED`, dentro do prazo).
 
 ## RF-013 — Salvar progresso
 
@@ -266,7 +282,9 @@ Atividades abertas futuras deverão permitir avaliação manual pelo professor.
 
 ## RF-017 — Visualizar resultado
 
-Aluno poderá visualizar:
+Após enviar, o aluno vê imediatamente apenas a **confirmação de envio**. Nota, acertos/erros, gabarito e feedback só ficam visíveis **após a liberação dos resultados** da atribuição — por ação do professor, pelo prazo de encerramento ou pelo fechamento da atividade (ver RN-011 e ADR-013).
+
+Quando liberado, o aluno poderá visualizar:
 
 - nota;
 - acertos;
@@ -457,17 +475,23 @@ User
 Teacher
  |
  +---- Class
+ |        |
+ |        +---- Enrollment
+ |        |
+ |        +---- Assignment ----+
+ |                             |
+ +---- Activity ---------------+   (uma Activity pode ter várias Assignments)
           |
-          +---- Enrollment
+          +---- ActivityItem
+
+Assignment
+ |
+ +---- Attempt
           |
-          +---- Activity
-                    |
-                    +---- ActivityItem
-                    |
-                    +---- Attempt
-                              |
-                              +---- Answer
+          +---- Answer
 ```
+
+> **Atualização 0.3.0 (ADR-012):** `Activity` deixou de ser filha de `Class`. Agora é uma entidade do repositório do professor; a ligação com a turma é a entidade **`Assignment`** (uma atividade atribuída a uma sala). `Attempt` passa a referenciar `Assignment`.
 
 ## 7.1 User
 
@@ -516,22 +540,39 @@ SELF_ENROLLMENT
 TEACHER_ASSIGNED
 ```
 
-## 7.4 Activity
+## 7.4 Activity (repositório do professor)
 
 ```text
 Activity
 - id
-- class_id
+- account_id            # dono (professor), não sala
 - title
 - description
 - type
 - difficulty
-- status
+- tags
+- status               # DRAFT | READY | ARCHIVED (estado de autoria)
+- created_at
+- updated_at
+```
+
+## 7.4.1 Assignment (atividade atribuída a uma sala)
+
+```text
+Assignment
+- id
+- class_id
+- activity_id           # origem no repositório
+- content_snapshot      # itens congelados na atribuição (só o enunciado)
+- status               # PUBLISHED | CLOSED
 - position
-- allow_retry
-- max_attempts
 - published_at
 - due_date
+- allow_retry
+- max_attempts
+- results_policy        # ON_TEACHER_RELEASE | ON_DUE_DATE | ON_CLOSE
+- results_released
+- results_released_at
 - created_at
 - updated_at
 ```
@@ -557,7 +598,9 @@ ActivityItem
 ```text
 Attempt
 - id
-- activity_id
+- assignment_id         # vínculo principal (ADR-012)
+- class_id              # desnormalizado
+- activity_id           # desnormalizado
 - student_id
 - started_at
 - submitted_at
@@ -790,26 +833,26 @@ Sala ativa criada e associada ao professor.
 
 ### Fluxo
 
-1. Professor acessa uma sala.
+1. Professor acessa "Minhas Atividades" (repositório).
 2. Seleciona "Nova Atividade".
 3. Escolhe tipo.
 4. Sistema apresenta Builder correspondente.
 5. Professor configura atividade.
-6. Professor salva como rascunho.
+6. Professor salva como rascunho (DRAFT) e, quando pronta, marca como READY.
 
 ---
 
-## UC-005 — Publicar atividade
+## UC-005 — Atribuir atividade a uma sala (publicar)
 
 **Ator:** Professor
 
 ### Fluxo
 
-1. Professor abre atividade em DRAFT.
-2. Sistema valida configuração.
-3. Professor seleciona publicar.
-4. Sistema altera status para PUBLISHED.
-5. Alunos elegíveis passam a visualizar a atividade.
+1. Professor abre uma atividade READY do repositório.
+2. Escolhe uma ou mais salas e define prazo, número de tentativas e política de liberação de resultados.
+3. Sistema valida a configuração (RN-006).
+4. Sistema congela o conteúdo e cria um Assignment `PUBLISHED` em cada sala escolhida.
+5. Alunos das salas passam a visualizar a atividade.
 
 ---
 
@@ -862,12 +905,14 @@ Teacher "1" ---- "0..*" Class
 Class "1" ---- "0..*" Enrollment
 Student "1" ---- "0..*" Enrollment
 
-Class "1" ---- "0..*" Activity
-
+Teacher "1" ---- "0..*" Activity          (repositório do professor)
 Activity "1" ---- "1..*" ActivityItem
 
-Student "1" ---- "0..*" Attempt
-Activity "1" ---- "0..*" Attempt
+Activity "1" ---- "0..*" Assignment
+Class    "1" ---- "0..*" Assignment       (N:N entre Activity e Class via Assignment)
+
+Assignment "1" ---- "0..*" Attempt
+Student    "1" ---- "0..*" Attempt
 
 Attempt "1" ---- "0..*" Answer
 ActivityItem "1" ---- "0..*" Answer
@@ -878,36 +923,41 @@ ActivityItem "1" ---- "0..*" Answer
 - Uma sala pertence a um professor.
 - Uma sala pode possuir zero ou muitos alunos.
 - Um aluno pode estar em zero ou muitas salas.
-- Uma sala pode possuir zero ou muitas atividades.
-- Uma atividade deve possuir pelo menos um item antes de ser publicada.
-- Um aluno pode possuir múltiplas tentativas se a configuração permitir.
+- Uma atividade pertence ao repositório de um professor, não a uma sala.
+- Uma atividade pode ser atribuída (Assignment) a zero ou muitas salas.
+- Uma atividade deve possuir pelo menos um item antes de ser atribuída a uma sala.
+- Um aluno pode possuir múltiplas tentativas por atribuição se a configuração permitir.
 - Uma resposta pertence a uma tentativa e a um item de atividade.
 
 ---
 
 # 12. Máquina de Estados
 
-## 12.1 Activity
+## 12.1 Activity (repositório) e Assignment (atribuição à sala)
 
 ```text
-          +--------+
-          | DRAFT  |
-          +---+----+
-              |
-           Publish
-              |
-              v
-       +-------------+
-       |  PUBLISHED  |
-       +------+------+ 
-              |
-        Close/Archive
-              |
-              v
-       +-------------+
-       | CLOSED      |
-       +-------------+
+   Activity (repositório do professor)      Assignment (por sala)
+
+   +--------+                               +-------------+
+   | DRAFT  |  --editar/validar-->          |  PUBLISHED  |
+   +---+----+                               +------+------+
+       |                                           |
+     marcar pronta                            fechar / vencer prazo
+       |                                           |
+       v                                           v
+   +--------+   --atribuir a uma sala-->     +-------------+
+   | READY  | ------------------------------>| CLOSED      |
+   +---+----+   (cria um Assignment;         +-------------+
+       |         a Activity segue READY)
+   arquivar
+       |
+       v
+   +----------+
+   | ARCHIVED |
+   +----------+
 ```
+
+Uma mesma `Activity` `READY` pode gerar vários `Assignment` (um por sala). Ver ADR-012.
 
 ## 12.2 Attempt
 
@@ -931,6 +981,8 @@ ActivityItem "1" ---- "0..*" Answer
 +-------------+
 ```
 
+A avaliação (`GRADED`) acontece no servidor no momento do envio. A **exibição** da nota e do gabarito ao aluno depende de `Assignment.results_released` (RN-011, ADR-013) — não é um estado da tentativa.
+
 ---
 
 # 13. Fluxos de Atividade
@@ -941,10 +993,7 @@ ActivityItem "1" ---- "0..*" Answer
 Professor
    |
    v
-Seleciona sala
-   |
-   v
-Nova atividade
+Nova atividade no repositório
    |
    v
 Seleciona tipo
@@ -959,10 +1008,13 @@ Configura conteúdo
 Validação
    |
    v
-DRAFT
+DRAFT --> READY
    |
    v
-PUBLICAR
+Atribuir a uma ou mais salas (Assignment: prazo, tentativas, liberação)
+   |
+   v
+PUBLISHED (na sala)
 ```
 
 ## 13.2 Execução
@@ -992,10 +1044,16 @@ Enviar
 Validator
   |
   v
-Score Calculator
+Score Calculator (servidor, no envio)
   |
   v
-Resultado
+Resultado calculado e congelado
+  |
+  v
+(aguarda liberação: professor / prazo / encerramento)
+  |
+  v
+Resultado visível ao aluno
 ```
 
 ---
@@ -1025,21 +1083,31 @@ POST   /api/v1/classes/join
 GET    /api/v1/classes/{classId}/students
 ```
 
-## Activities
+## Activities (repositório do professor)
 
 ```text
-GET    /api/v1/classes/{classId}/activities
-POST   /api/v1/classes/{classId}/activities
+GET    /api/v1/activities                      # repositório do professor autenticado
+POST   /api/v1/activities
 GET    /api/v1/activities/{activityId}
-PATCH  /api/v1/activities/{activityId}
+PATCH  /api/v1/activities/{activityId}          # só enquanto DRAFT
 DELETE /api/v1/activities/{activityId}
-POST   /api/v1/activities/{activityId}/publish
+```
+
+## Assignments (atribuição a salas)
+
+```text
+GET    /api/v1/classes/{classId}/assignments
+POST   /api/v1/classes/{classId}/assignments               # body: { activityId, dueDate, maxAttempts, resultsPolicy }
+GET    /api/v1/classes/{classId}/assignments/{assignmentId}
+PATCH  /api/v1/classes/{classId}/assignments/{assignmentId}
+POST   /api/v1/classes/{classId}/assignments/{assignmentId}/close
+POST   /api/v1/classes/{classId}/assignments/{assignmentId}/release-results
 ```
 
 ## Attempts
 
 ```text
-POST /api/v1/activities/{activityId}/attempts
+POST /api/v1/assignments/{assignmentId}/attempts
 GET  /api/v1/attempts/{attemptId}
 PATCH /api/v1/attempts/{attemptId}
 POST /api/v1/attempts/{attemptId}/submit
@@ -1069,9 +1137,10 @@ Pode:
 CREATE_CLASS
 UPDATE_OWN_CLASS
 MANAGE_ENROLLMENTS
-CREATE_ACTIVITY
+CREATE_ACTIVITY            # no próprio repositório
 UPDATE_OWN_ACTIVITY
-PUBLISH_ACTIVITY
+ASSIGN_ACTIVITY_TO_CLASS   # criar Assignment
+RELEASE_ASSIGNMENT_RESULTS
 VIEW_CLASS_RESULTS
 ```
 
@@ -1118,15 +1187,15 @@ Somente o professor proprietário pode editar sua sala.
 
 ## RN-005
 
-Somente atividades publicadas podem ser iniciadas por alunos.
+Somente atividades com atribuição `PUBLISHED` na sala do aluno podem ser iniciadas por ele.
 
 ## RN-006
 
-Uma atividade não pode ser publicada se sua configuração for inválida.
+Uma atividade não pode ser atribuída a uma sala se sua configuração for inválida.
 
 ## RN-007
 
-Número de tentativas deve respeitar `max_attempts`.
+Número de tentativas deve respeitar `max_attempts`, contado **por atribuição** (a mesma atividade em salas diferentes tem contagem independente).
 
 ## RN-008
 
@@ -1139,6 +1208,14 @@ Aluno só pode consultar seus próprios resultados, salvo permissões administra
 ## RN-010
 
 Professor só pode visualizar resultados das salas sob sua responsabilidade.
+
+## RN-011
+
+Nota, gabarito e correção por item só são exibidos ao aluno após a **liberação dos resultados** da atribuição — por ação do professor, pelo prazo de encerramento ou pelo fechamento da atividade. O cálculo continua sendo feito pelo servidor no momento do envio (RN-008); a liberação controla apenas a exibição. Ver ADR-013.
+
+## RN-012
+
+Uma atividade do repositório do professor pode ser atribuída a várias salas. O conteúdo é congelado no momento da atribuição — editar a atividade no repositório depois não altera as salas já atendidas. Ver ADR-012.
 
 ---
 
@@ -1380,11 +1457,11 @@ Principalmente:
 
 ## Atividades
 
-- [ ] Professor consegue criar atividade.
-- [ ] Professor consegue selecionar tipo.
-- [ ] Professor consegue salvar rascunho.
-- [ ] Professor consegue publicar.
-- [ ] Aluno consegue visualizar atividade publicada.
+- [ ] Professor consegue criar atividade no seu repositório e selecionar o tipo.
+- [ ] Professor consegue salvar rascunho e marcar como pronta.
+- [ ] Professor consegue atribuir a mesma atividade a mais de uma sala.
+- [ ] Editar a atividade no repositório não altera as salas já atendidas.
+- [ ] Aluno consegue visualizar a atividade atribuída à sua sala.
 
 ## Execução
 
@@ -1392,12 +1469,14 @@ Principalmente:
 - [ ] Sistema cria tentativa.
 - [ ] Respostas são persistidas.
 - [ ] Aluno consegue enviar.
-- [ ] Sistema calcula resultado objetivo.
+- [ ] Sistema calcula resultado objetivo no envio.
+- [ ] Antes da liberação, nota e gabarito não ficam visíveis ao aluno (nem via acesso direto ao banco).
 
 ## Resultados
 
-- [ ] Aluno consegue visualizar seu resultado.
-- [ ] Professor consegue visualizar resultados da turma.
+- [ ] Professor consegue liberar os resultados de uma atribuição.
+- [ ] Após a liberação, o aluno consegue visualizar seu resultado.
+- [ ] Professor consegue visualizar resultados da turma antes de liberar aos alunos.
 - [ ] Professor consegue visualizar desempenho individual.
 
 ## Privacidade e conformidade
@@ -1530,9 +1609,11 @@ ADR-009 — Estratégia de drag-and-drop
 ADR-010 — Estratégia de deploy
 ADR-011 — Landing page e site institucional
 ADR-012 — Conformidade com a LGPD
+ADR-013 — Atividade reutilizável (repositório + atribuição por sala)
+ADR-014 — Liberação controlada de resultados
 ```
 
-> Nota: os ADRs formais foram escritos e renumerados em `docs/adr/` ao adotar Firebase (ver `docs/adr/0001` em diante). O mapeamento não é 1:1 com a lista acima — a landing page está em `docs/adr/0010` e a LGPD em `docs/adr/0011`.
+> Nota: os ADRs formais foram escritos e renumerados em `docs/adr/` ao adotar Firebase (ver `docs/adr/0001` em diante). O mapeamento não é 1:1 com a lista acima: landing page → `docs/adr/0010`, LGPD → `docs/adr/0011`, atividade reutilizável → `docs/adr/0012`, liberação de resultados → `docs/adr/0013`.
 
 ---
 
@@ -1650,7 +1731,7 @@ Mudanças relevantes deverão:
 
 # 29. Questões em Aberto
 
-As seguintes decisões precisam ser definidas antes do design detalhado (ver `docs/OPEN-QUESTIONS.md` para o status e os defaults sugeridos de cada uma, incluindo as questões de LGPD adicionadas na v0.2.0):
+**Status (v0.3.0): todas respondidas.** As decisões estão registradas em `docs/OPEN-QUESTIONS.md`, que passou a ser o registro de decisão. As de impacto arquitetural viraram ADR-012 (atividade reutilizável) e ADR-013 (liberação de resultados). A lista abaixo é mantida como referência histórica das perguntas:
 
 - O cadastro será aberto ou por convite? *(parcial: aberto para professores; aluno menor de idade só via professor/escola — ver ADR-011 e RF-021)*
 - Professor poderá compartilhar uma atividade entre salas?

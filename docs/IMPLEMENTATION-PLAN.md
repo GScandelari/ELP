@@ -1,8 +1,8 @@
 # Plano de Implementação — ELP (English Learning Platform) sobre Firebase
 
-**Versão:** 0.3.0
-**Status:** Draft — depende de validação das questões em aberto (ver seção 9)
-**Baseado em:** [`SDD.md`](./SDD.md) v0.2.0
+**Versão:** 0.4.0
+**Status:** Draft — questões em aberto respondidas (ver `OPEN-QUESTIONS.md`); modelo de dados atualizado para atividade reutilizável (ADR-012)
+**Baseado em:** [`SDD.md`](./SDD.md) v0.3.0
 **Objetivo deste documento:** traduzir o SDD original (que sugeria Next.js + FastAPI + PostgreSQL) para uma arquitetura 100% Firebase, e organizar a implementação em fases sequenciais e testáveis.
 
 ---
@@ -20,6 +20,8 @@ Essas mudanças **substituem** as decisões implícitas em ADR-002, ADR-003, ADR
 > **Atualização de escopo de produto:** este projeto passou a ser desenhado para virar um produto comercial vendido a professores independentes, com um portal admin futuro para suporte e provisionamento. Isso não muda o escopo do MVP (Fases 0–7 abaixo continuam as mesmas), mas afeta nomenclatura do modelo de dados desde já e adiciona uma fase pós-MVP — ver ADR-009 e seção 10.
 
 > **Atualização 0.3.0 — landing page e LGPD:** o MVP passa a incluir (a) uma landing page pública para divulgação (ADR-010) e (b) conformidade com a LGPD desde o desenvolvimento, com tratamento diferenciado de dados de alunos menores de idade (ADR-011). Impacto nas fases: a região dos projetos Firebase é fixada em `southamerica-east1` na Fase 0 (decisão irreversível); a Fase 1 ganha age gate e registro de consentimento; a Fase 6 ganha exportação/exclusão de dados e banner de cookies; a Fase 7 ganha o RIPD como bloqueio de go-live. Detalhes no ADR-011 e nos artefatos de `docs/lgpd/`.
+
+> **Atualização 0.4.0 — questões em aberto respondidas:** as decisões estão registradas em `OPEN-QUESTIONS.md`. As de maior impacto: (a) **atividade é reutilizável em várias salas** — deixa de ser subcoleção da sala e vira um repositório do professor (`activities/{activityId}`) com atribuição por sala (`assignments`), ver ADR-012; (b) **resultados (nota e gabarito) não são exibidos ao aluno até a liberação** (ação do professor, prazo ou encerramento), ver ADR-013; (c) **sem portal admin no MVP**, mas com um guia de onboarding/suporte manual — `docs/operations/onboarding-mvp.md`. As seções 3, 4, 6 e 9 abaixo já refletem essas decisões.
 
 ---
 
@@ -129,20 +131,44 @@ classes/{classId}/enrollments/{studentId}
   enrollmentType (SELF_ENROLLMENT | TEACHER_ASSIGNED), status, createdAt
   # studentId como ID do documento evita duplicidade (RN-003) sem query extra
 
-classes/{classId}/activities/{activityId}
-  title, description, type, difficulty, status, position,
-  allowRetry, maxAttempts, publishedAt, dueDate, createdAt, updatedAt
+activities/{activityId}
+  accountId, title, description, type, difficulty, tags[],
+  status (DRAFT | READY | ARCHIVED), createdAt, updatedAt
+  # repositório de atividades do professor — coleção top-level, NÃO
+  # subcoleção da sala (ver ADR-012). É o "conteúdo" da atividade,
+  # independente de qualquer turma. `status` aqui é de autoria
+  # (rascunho / pronta / arquivada), não de publicação numa sala.
 
-classes/{classId}/activities/{activityId}/items/{itemId}
+activities/{activityId}/items/{itemId}
   position, prompt, configuration, points
 
+classes/{classId}/assignments/{assignmentId}
+  activityId, activityTitle, type, contentSnapshot,
+  status (PUBLISHED | CLOSED), position, publishedAt, dueDate,
+  allowRetry, maxAttempts,
+  resultsPolicy (ON_TEACHER_RELEASE | ON_DUE_DATE | ON_CLOSE),
+  resultsReleased, resultsReleasedAt,
+  createdAt, updatedAt
+  # atribuição de uma atividade a uma sala (ver ADR-012). `contentSnapshot`
+  # congela os itens no momento da publicação MAS SÓ A PARTE VISÍVEL AO
+  # ALUNO (enunciados, opções) — nunca o gabarito. O professor pode editar
+  # a atividade no repositório sem afetar as salas já atendidas.
+  # resultsReleased controla a exibição de nota/gabarito ao aluno (ADR-013).
+
+assignmentKeys/{assignmentId}
+  classId, gradingConfig   # gabarito + regras de pontuação congelados
+  # coleção top-level SEM leitura pelo client (regra: allow read, write: false).
+  # só o Admin SDK lê, dentro de submitAttempt, para corrigir. Mantida
+  # separada de `contentSnapshot` para que o gabarito nunca trafegue para
+  # o aluno junto com o enunciado (ADR-012 + ADR-013).
+
 attempts/{attemptId}
-  activityId, classId, studentId, startedAt, submittedAt,
+  assignmentId, classId, activityId, studentId, startedAt, submittedAt,
   status, score, maxScore
-  # attempts fica top-level (não subcoleção de activity) porque é
-  # consultado por studentId em telas diferentes ("meu progresso");
-  # classId e activityId são desnormalizados aqui para permitir
-  # queries por sala/atividade sem collection group query cara
+  # attempts fica top-level (não subcoleção) porque é consultado por
+  # studentId em telas diferentes ("meu progresso"). assignmentId é o
+  # vínculo principal (max_attempts é contado por assignment, RN-007);
+  # classId e activityId são desnormalizados para queries por sala/atividade.
 
 attempts/{attemptId}/answers/{itemId}
   # itemId do ActivityItem como ID do documento — 1 resposta por item
@@ -150,7 +176,7 @@ attempts/{attemptId}/answers/{itemId}
 
 # Documentos de agregação (para RF-018 / Épico 5, evitar N+1 reads)
 classes/{classId}/resultsSummary/{studentId}
-  activityScores: { [activityId]: { score, maxScore, submittedAt } }
+  assignmentScores: { [assignmentId]: { score, maxScore, submittedAt, released } }
   # atualizado por Cloud Function após cada avaliação (padrão
   # "aggregation on write", recomendado pela documentação do Firestore
   # para dashboards que hoje seriam GROUP BY no SDD original)
@@ -158,16 +184,20 @@ classes/{classId}/resultsSummary/{studentId}
 
 ### 3.1 Índices compostos necessários (a declarar em `firestore.indexes.json`)
 
-- `attempts`: `studentId ASC, activityId ASC` (verificar `max_attempts`, RN-007)
-- `attempts`: `classId ASC, status ASC` (dashboard do professor)
-- `classes/{classId}/activities`: `status ASC, position ASC` (listar atividades publicadas em ordem)
+- `activities`: `accountId ASC, status ASC, updatedAt DESC` (listar o repositório de atividades do professor)
+- `attempts`: `studentId ASC, assignmentId ASC` (verificar `max_attempts`, RN-007)
+- `attempts`: `assignmentId ASC, status ASC` (dashboard do professor + varredura de liberação de resultados, ADR-013)
+- `attempts`: `classId ASC, status ASC` (visão geral da sala)
+- `classes/{classId}/assignments`: `status ASC, position ASC` (listar atividades da sala em ordem)
 
-### 3.2 Decisões de modelagem que precisam de validação (ligadas à seção 29 do SDD)
+### 3.2 Decisões de modelagem (antes em aberto, agora resolvidas — ver `OPEN-QUESTIONS.md`)
 
-- Se uma atividade puder pertencer a mais de uma sala (pergunta em aberto do SDD), o modelo acima precisa mudar de `classes/{classId}/activities` para uma coleção top-level `activities` com uma subcoleção `activityClasses` — **decisão bloqueante para a Fase 3**, não deve ser assumida.
-- Se atividades tiverem peso, o campo `weight` entra em `Activity`; se houver nota percentual **e** pontos, `resultsSummary` precisa guardar os dois.
-- `teacherId` foi renomeado para `accountId` em `classes/{classId}` (ver ADR-009) para acomodar a visão de produto comercial — decisão já tomada, de baixo custo, não bloqueia nenhuma fase.
-- Exclusão de conta (RF-020) **anonimiza** `attempts`/`answers` em vez de apagar: `studentId` é substituído por um token não reversível e os identificadores diretos saem, preservando as agregações de `resultsSummary`. Definir isso agora evita reprocessar dados históricos depois — ver ADR-011.
+- **Atividade reutilizável em várias salas:** resolvido — `Activity` é coleção top-level (`activities/{activityId}`, repositório do professor) e a aplicação numa turma é `classes/{classId}/assignments/{assignmentId}`, com snapshot de conteúdo. Ver **ADR-012**. Isso deixou de ser bloqueio da Fase 3.
+- **Liberação de resultados:** resolvido — nota e gabarito só aparecem ao aluno após liberação (`resultsReleased` no assignment). Ver **ADR-013**.
+- **Atividades sem peso no MVP:** confirmado — sem campo `weight`; `resultsSummary` usa soma simples de `score`/`maxScore`.
+- **Nota:** confirmado — `score` (pontos) e `maxScore` guardados; percentual é derivado na exibição.
+- `teacherId` → `accountId` em `classes` e `activities` (ver ADR-009) — decisão de baixo custo, já incorporada.
+- Exclusão de conta (RF-020) **anonimiza** `attempts`/`answers` em vez de apagar: `studentId` vira um token não reversível e os identificadores diretos saem, preservando as agregações de `resultsSummary` — ver ADR-011.
 
 ---
 
@@ -182,10 +212,16 @@ match /classes/{classId} {
   allow update, delete: if isAccountOwner(classId);
 }
 
-match /classes/{classId}/activities/{activityId} {
+match /activities/{activityId} {
+  allow read, write: if resource.data.accountId == request.auth.uid && hasRole('teacher');
+  allow create: if request.resource.data.accountId == request.auth.uid && hasRole('teacher');
+  // alunos NÃO leem `activities` — leem o `contentSnapshot` do assignment (ADR-012)
+}
+
+match /classes/{classId}/assignments/{assignmentId} {
   allow read: if isAccountOwner(classId)
               || (isEnrolledStudent(classId) && resource.data.status == 'PUBLISHED');
-  allow write: if isAccountOwner(classId);
+  allow write: if isAccountOwner(classId); // publicar/fechar; releaseResults via callable
 }
 
 match /attempts/{attemptId} {
@@ -199,10 +235,15 @@ match /consents/{uid}/records/{recordId} {
   allow read: if request.auth.uid == uid || hasRole('admin');
   allow write: if false; // gravado só por Cloud Function (callable) no aceite — registro imutável
 }
+
+match /assignmentKeys/{assignmentId} {
+  allow read, write: if false; // gabarito congelado — só Admin SDK dentro de submitAttempt
+}
 ```
 
 Pontos importantes:
 
+- **O gabarito nunca é legível pelo client.** Fica em `assignmentKeys/{assignmentId}` (fechado para todos) e o `contentSnapshot` do assignment carrega só o enunciado. Isso é o que sustenta o ADR-013 — o aluno não consegue ler a resposta certa antes da liberação nem inspecionando o Firestore.
 - **Nenhuma regra escreve `score`/`isCorrect` diretamente.** Essas escritas só acontecem via Admin SDK dentro da função `submitAttempt`, que ignora as rules — isso é o que garante RN-008.
 - Custom claims (`role`) são definidas por uma Cloud Function `onUserCreate`/`onCall setRole` (apenas admin pode promover; no MVP, todo cadastro define o papel no próprio formulário de registro e a função apenas espelha o valor como claim).
 - Testar as regras com o **Firestore Emulator + `@firebase/rules-unit-testing`** é obrigatório antes de cada deploy (RNF-002, RNF-005).
@@ -221,7 +262,13 @@ ActivityType
 └── ScoreCalculator     -> função pura em functions/src/activity-types/{type}.ts
 ```
 
-Cada tipo (fill-in-blanks, meaning matching, translation, multiple choice) implementa uma interface comum `ActivityTypeHandler { validate(config), score(answer, config) }`, registrada num mapa `type -> handler` dentro das Cloud Functions. Isso preserva o requisito RNF-005 (extensibilidade sem alterar o núcleo) mesmo fora de um backend tradicional.
+Cada tipo (fill-in-blanks, meaning matching, translation, multiple choice) implementa uma interface comum `ActivityTypeHandler { validate(config), toStudentContent(config), score(answer, gradingConfig) }`, registrada num mapa `type -> handler` dentro das Cloud Functions:
+
+- `validate(config)` — usada no repositório do professor e no `publishAssignment` (RN-006);
+- `toStudentContent(config)` — separa o que vai para o `contentSnapshot` (enunciado) do que vai para `assignmentKeys` (gabarito), ver ADR-012;
+- `score(answer, gradingConfig)` — roda no `submitAttempt` com Admin SDK (RN-008).
+
+Isso preserva o requisito RNF-005 (extensibilidade sem alterar o núcleo) mesmo fora de um backend tradicional.
 
 ---
 
@@ -256,31 +303,34 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 
 - `createClass` (callable) com geração atômica de código único via transação em `enrollmentCodes/{code}` (RN-001).
 - `joinClassByCode` (callable), validando sala ativa (RN-002) e não-duplicidade (RN-003).
-- Inscrição manual pelo professor.
+- Inscrição manual pelo professor, incluindo o fluxo de aluno menor (declaração de consentimento do responsável — RF-021, ADR-011).
 - Portal do professor: listar salas, ver alunos inscritos.
 - Portal do aluno: listar salas, entrar por código.
+- Rascunho do guia de onboarding/suporte manual (`docs/operations/onboarding-mvp.md`) — sem portal admin no MVP.
 - **Critério de saída:** UC-002 e UC-003 do SDD completos, RN-001 a RN-004 cobertos por teste de regras.
 
-### Fase 3 — Activity Engine + 4 tipos do MVP (4–6 semanas, a maior fase)
+### Fase 3 — Repositório de atividades + Activity Engine + 4 tipos do MVP (5–7 semanas, a maior fase)
 
-- Estrutura genérica `Activity`/`ActivityItem` no Firestore + máquina de estados DRAFT/PUBLISHED/CLOSED/ARCHIVED (RF-011).
+- **Repositório de atividades do professor** (`activities/{activityId}` + `items`), máquina de estados de autoria DRAFT → READY → ARCHIVED (ADR-012).
+- **Atribuição por sala:** `publishAssignment` (callable) que valida a configuração (RN-006), congela `contentSnapshot` (enunciado) e `assignmentKeys` (gabarito), e cria `classes/{classId}/assignments/{assignmentId}` — a mesma atividade pode ser atribuída a N salas (RN-012).
+- Máquina de estados do assignment: PUBLISHED → CLOSED (RF-011).
 - Builder + Renderer para os 4 tipos do MVP: fill-in-blanks, meaning matching, translation/localization, multiple choice (seção 9.1–9.4 do SDD).
-- Validators/ScoreCalculators correspondentes nas Cloud Functions.
-- `publishActivity` (callable) validando RN-006 (não publicar configuração inválida).
-- **Critério de saída:** UC-004 e UC-005 completos; professor consegue criar, configurar e publicar uma atividade de cada tipo.
+- Handlers `validate` / `toStudentContent` / `score` por tipo nas Cloud Functions.
+- **Critério de saída:** UC-004 e UC-005 completos; professor cria uma atividade de cada tipo no repositório e a atribui a duas salas distintas.
 
-### Fase 4 — Execução e Avaliação — Attempts (3 semanas)
+### Fase 4 — Execução e Avaliação — Attempts (3–4 semanas)
 
-- `createAttempt` (callable), aplicando RN-005 (só atividade publicada) e RN-007 (`max_attempts`).
+- `createAttempt` (callable) sobre um `assignment`, aplicando RN-005 (só assignment `PUBLISHED`) e RN-007 (`max_attempts` contado por assignment).
 - Salvar progresso: escrita direta e incremental do client em `attempts/{id}` enquanto `status == IN_PROGRESS`, protegida por regra que impede editar após submissão.
-- `submitAttempt` (callable) → dispara avaliação server-side via Admin SDK (RN-008), grava `answers`, calcula `score`.
-- Tela de resultado para o aluno (RF-017), respeitando RN-009.
-- **Critério de saída:** UC-006 completo; fluxo E2E "aluno resolve → submete → recebe nota" funcionando ponta a ponta.
+- `submitAttempt` (callable) → lê `assignmentKeys` via Admin SDK, calcula `score` e `answers` server-side (RN-008), grava com `status = GRADED`. **Não retorna nota nem gabarito ao aluno se `resultsReleased == false`** (ADR-013, RN-011).
+- `releaseAssignmentResults` (callable) para o professor liberar; Cloud Function agendada para a política `ON_DUE_DATE`.
+- Tela de resultado do aluno (RF-017): mostra "enviado — aguardando liberação" ou o resultado completo, conforme `resultsReleased`; respeita RN-009.
+- **Critério de saída:** UC-006 completo; fluxo E2E "aluno resolve → submete → (professor libera) → aluno vê nota"; antes da liberação, nota e gabarito não trafegam para o aluno nem via Firestore direto.
 
 ### Fase 5 — Analytics / Resultados do professor (2 semanas)
 
-- Cloud Function que atualiza `classes/{classId}/resultsSummary/{studentId}` a cada avaliação (padrão de agregação em escrita).
-- Telas de acompanhamento por sala/atividade/aluno (RF-018), respeitando RN-010.
+- Cloud Function que atualiza `classes/{classId}/resultsSummary/{studentId}` (indexado por `assignmentId`) a cada avaliação (padrão de agregação em escrita).
+- Telas de acompanhamento por sala/atividade/aluno (RF-018), respeitando RN-010 — o professor vê os resultados da turma independentemente da liberação para os alunos.
 - **Critério de saída:** UC-007 completo sem necessidade de ler todos os `attempts` no client.
 
 ### Fase 6 — Observabilidade, Segurança, Privacidade e Hardening (2–3 semanas)
@@ -302,6 +352,7 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 - Conteúdo final da landing page e revisão jurídica dos textos legais (Política de Privacidade, Termos, Cookies).
 - **RIPD concluído, revisado e assinado — bloqueio de go-live** (tratamento de dados de menores exige, ver ADR-011).
 - Plano de resposta a incidentes documentado e canal do encarregado publicado.
+- Guia de onboarding/suporte (`docs/operations/onboarding-mvp.md`) finalizado e material de apoio entregue aos professores piloto.
 - Onboarding de professores piloto.
 - Monitoramento ativo na primeira semana (Cloud Monitoring + alertas).
 
@@ -353,7 +404,7 @@ elp/
 │   └── src/
 │       ├── auth/             # onUserCreate, custom claims, recordConsent
 │       ├── classes/          # createClass, joinClassByCode
-│       ├── activities/       # publishActivity, activity-types/*
+│       ├── activities/       # publishAssignment, releaseAssignmentResults, activity-types/*
 │       ├── attempts/         # createAttempt, submitAttempt, evaluate
 │       └── privacy/          # exportUserData, deleteUserData, purgeExpiredData (ADR-011)
 ├── firestore.rules
@@ -362,20 +413,16 @@ elp/
 ├── docs/
 │   ├── SDD.md                 # este documento de origem
 │   ├── IMPLEMENTATION-PLAN.md # este arquivo
-│   ├── OPEN-QUESTIONS.md
+│   ├── OPEN-QUESTIONS.md      # registro das decisões (antes: questões em aberto)
 │   ├── lgpd/                  # RIPD, registro de tratamento, evidências de DPA (ADR-011)
+│   ├── operations/            # guia de onboarding e suporte do MVP
 │   └── adr/
 │       ├── 0001-arquitetura-serverless-firebase.md
-│       ├── 0002-firestore-como-banco-de-dados.md
-│       ├── 0003-cloud-functions-para-logica-de-servidor.md
-│       ├── 0004-firebase-authentication-e-custom-claims.md
-│       ├── 0005-security-rules-como-camada-de-autorizacao.md
-│       ├── 0006-modelagem-de-attempts-e-answers.md
-│       ├── 0007-estrategia-drag-and-drop.md
-│       ├── 0008-estrategia-de-deploy-e-ambientes.md
-│       ├── 0009-multi-tenancy-e-instanciamento-para-professores-independentes.md
+│       ├── ... (0002 a 0009)
 │       ├── 0010-landing-page-e-site-institucional.md
-│       └── 0011-conformidade-com-a-lgpd.md
+│       ├── 0011-conformidade-com-a-lgpd.md
+│       ├── 0012-atividade-reutilizavel-e-atribuicao-por-sala.md
+│       └── 0013-liberacao-controlada-de-resultados.md
 └── .github/workflows/
     ├── ci.yml
     └── deploy.yml
@@ -387,7 +434,8 @@ elp/
 
 ## 9. Dependências e riscos
 
-- **Bloqueio real:** as "Questões em Aberto" da seção 29 do SDD afetam diretamente o modelo de dados da seção 3 deste documento (principalmente: atividade pertencer a múltiplas salas, cálculo de nota, visibilidade de resposta correta). Recomendo fechar essas respostas **antes** de iniciar a Fase 3 — ver `docs/OPEN-QUESTIONS.md` com sugestões de default.
+- **Bloqueio resolvido:** as "Questões em Aberto" do SDD foram respondidas (ver `docs/OPEN-QUESTIONS.md`). As decisões de maior impacto — atividade reutilizável em várias salas (ADR-012) e liberação controlada de resultados (ADR-013) — já estão refletidas nas seções 3 a 6.
+- **Risco de conteúdo duplicado:** o `contentSnapshot` por assignment (ADR-012) multiplica o armazenamento do enunciado pelo número de salas. Aceitável na escala do MVP; se pesar, mover para subcoleção `assignments/{id}/items`.
 - **Risco técnico:** Firestore não tem transações que abranjam mais que 500 documentos nem full-text search nativo — relevante já a partir da Fase 3 (banco de vocabulário/textos, Fase 3 do roadmap).
 - **Risco de custo:** Cloud Functions com muitas invocações (ex.: salvar progresso a cada resposta) pode gerar custo relevante em escala — mitigar com debounce no client antes de escrever, e mover para escrita direta protegida por regra (já contemplado na Fase 4).
 - **Risco de produto:** construir o portal admin (Fase 8) cedo demais, antes de haver professores pagantes reais, tende a ser esforço mal direcionado — o ADR-009 resolve o essencial (nomenclatura de dados) a custo baixo agora exatamente para permitir adiar a Fase 8 sem custo de migração depois.
@@ -399,7 +447,8 @@ elp/
 
 ## 10. Próximos passos imediatos
 
-1. Validar (ou aceitar os defaults sugeridos em `docs/OPEN-QUESTIONS.md`) as questões em aberto que bloqueiam a Fase 3 e as novas questões de LGPD.
-2. Repositório GitHub sincronizado: `https://github.com/GScandelari/ELP.git` (push inicial feito).
-3. Designar o encarregado (DPO) e abrir o RIPD como documento vivo em `docs/lgpd/`.
-4. Iniciar Fase 0, criando os projetos Firebase já em `southamerica-east1` e usando `accountId` (não `teacherId`) no schema desde o primeiro commit de código.
+1. Questões em aberto respondidas (ver `docs/OPEN-QUESTIONS.md`) — modelo de dados e fases já atualizados (ADR-012, ADR-013).
+2. Repositório GitHub sincronizado: `https://github.com/GScandelari/ELP.git`.
+3. Redigir o termo simples de consentimento (professor, aluno, responsável) — sem equipe jurídica agora; endurecer pós-MVP (decisão registrada em `OPEN-QUESTIONS.md`).
+4. Designar o encarregado (DPO) e abrir o RIPD como documento vivo em `docs/lgpd/`.
+5. Iniciar Fase 0, criando os projetos Firebase já em `southamerica-east1` e usando `accountId` no schema desde o primeiro commit de código.
