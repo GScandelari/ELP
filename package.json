@@ -14,11 +14,14 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:rules": "cross-env FIREBASE_CLI_EXPERIMENTS=webframeworks firebase emulators:exec --only firestore --project demo-elp \"vitest run --dir tests/rules\"",
+    "test:e2e": "playwright test",
+    "test:e2e:browsers": "playwright install --with-deps chromium",
     "emulators": "pnpm --filter @elp/functions build && cross-env FIREBASE_CLI_EXPERIMENTS=webframeworks firebase emulators:start --only auth,firestore,functions --project demo-elp",
     "format": "prettier --write ."
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",
+    "@playwright/test": "^1.63.0",
     "cross-env": "^7.0.3",
     "firebase": "^11.1.0",
     "firebase-tools": "^13.29.1",

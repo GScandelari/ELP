@@ -2,6 +2,10 @@
 
 Monorepo pnpm: `apps/web` (Next.js) + `functions` (Cloud Functions) + `docs`.
 
+> **Local do repositório:** `C:\dev\elp` — **não** manter dentro do OneDrive.
+> A sincronização de `node_modules/` e `.next/` corrompe o cache do bundler do
+> Next.js a cada troca de branch.
+
 ## Pré-requisitos
 
 | Ferramenta | Versão | Observação |
@@ -44,6 +48,7 @@ mostrar *"Emulador de Auth (127.0.0.1:9099): conectado ✓"*, e
 | `pnpm lint` / `pnpm typecheck` | qualidade |
 | `pnpm test` | testes unitários (Vitest) |
 | `pnpm test:rules` | testes das Security Rules (sobe o emulador de Firestore) |
+| `pnpm test:e2e` | testes E2E (Playwright) — sobe emuladores + Next dev e roda o cenário cadastro→login |
 
 ## Quando os projetos Firebase existirem
 
@@ -59,8 +64,8 @@ mostrar *"Emulador de Auth (127.0.0.1:9099): conectado ✓"*, e
 
 ## CI/CD
 
-- `.github/workflows/ci.yml` — lint, typecheck, testes, build, testes de rules
-  em cada PR e push na `main`.
+- `.github/workflows/ci.yml` — job `build` (lint, typecheck, testes, build,
+  testes de rules) e job `e2e` (Playwright) em cada PR e push na `main`.
 - `.github/workflows/deploy.yml` — preview por PR e deploy para `elp-staging` no
   merge. **Inativo até** criar os secrets `FIREBASE_SERVICE_ACCOUNT_STAGING` e
   `FIREBASE_SERVICE_ACCOUNT_PROD`. Produção é deploy manual/tagueado (ADR-008).
@@ -72,8 +77,9 @@ apps/web/
   app/(marketing)/     landing + páginas legais (ADR-010)
   content/*.md          textos institucionais/legais (renderizados com marked)
   components/, lib/
-functions/src/          Cloud Functions (só `ping` no momento)
+functions/src/          Cloud Functions (health, auth/finalize-signup)
 firestore.rules         Security Rules (ADR-005/012/013/014)
 firestore.indexes.json  índices compostos
-tests/rules/            testes de Security Rules
+tests/rules/            testes de Security Rules (Vitest + rules-unit-testing)
+e2e/                    testes E2E (Playwright)
 ```
