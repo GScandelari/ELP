@@ -6,6 +6,7 @@ import { CURRENT_LEGAL_VERSION } from "../lib/legal";
 type Payload = {
   name?: unknown;
   role?: unknown;
+  isAdult?: unknown;
   acceptedTerms?: unknown;
   acceptedPrivacy?: unknown;
 };
@@ -14,10 +15,12 @@ type Payload = {
  * Finaliza o cadastro logo após o `createUserWithEmailAndPassword` do cliente.
  * Roda com Admin SDK: define o custom claim `role`, cria `users/{uid}` (e
  * `accounts/{uid}` para professor) e registra o consentimento em
- * `consents/{uid}` — ver RF-019, ADR-011, ADR-009.
+ * `consents/{uid}` — ver RF-019, RF-021, ADR-011, ADR-009.
  *
  * Idempotente: se `users/{uid}` já existe, apenas retorna o papel.
- * PR 1.2 cobre apenas `role: "teacher"`; aluno chega na PR 1.3.
+ *
+ * Aluno menor de 18 (isAdult === false) é rejeitado: a conta precisa ser
+ * criada/vinculada pelo professor ou escola (RF-021).
  */
 export const finalizeSignup = onCall(async (request) => {
   if (!request.auth) {
@@ -26,11 +29,12 @@ export const finalizeSignup = onCall(async (request) => {
 
   const data = (request.data ?? {}) as Payload;
   const name = typeof data.name === "string" ? data.name.trim() : "";
+  const role = data.role;
 
   if (name.length < 2) {
     throw new HttpsError("invalid-argument", "Informe seu nome completo.");
   }
-  if (data.role !== "teacher") {
+  if (role !== "teacher" && role !== "student") {
     throw new HttpsError("invalid-argument", "Papel inválido.");
   }
   if (data.acceptedTerms !== true || data.acceptedPrivacy !== true) {
@@ -39,10 +43,15 @@ export const finalizeSignup = onCall(async (request) => {
       "É necessário aceitar os Termos de Uso e a Política de Privacidade.",
     );
   }
+  if (role === "student" && data.isAdult !== true) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Alunos menores de 18 anos devem ser cadastrados pelo professor ou pela escola.",
+    );
+  }
 
   const uid = request.auth.uid;
   const email = (request.auth.token.email as string | undefined) ?? null;
-  const role = "teacher" as const;
   const db = getFirestore();
   const userRef = db.doc(`users/${uid}`);
 
@@ -59,11 +68,14 @@ export const finalizeSignup = onCall(async (request) => {
     email,
     role,
     status: "ACTIVE",
-    isMinor: false,
+    isMinor: false, // menor não chega até aqui (self-service bloqueado)
     createdAt: now,
     updatedAt: now,
   });
-  batch.set(db.doc(`accounts/${uid}`), { status: "ACTIVE", createdAt: now });
+
+  if (role === "teacher") {
+    batch.set(db.doc(`accounts/${uid}`), { status: "ACTIVE", createdAt: now });
+  }
 
   for (const type of ["TERMS", "PRIVACY_POLICY"] as const) {
     batch.set(db.collection(`consents/${uid}/records`).doc(), {
