@@ -13,12 +13,13 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-elp \"vitest run --dir tests/rules\"",
-    "emulators": "pnpm --filter @elp/functions build && firebase emulators:start --only auth,firestore,functions --project demo-elp",
+    "test:rules": "cross-env FIREBASE_CLI_EXPERIMENTS=webframeworks firebase emulators:exec --only firestore --project demo-elp \"vitest run --dir tests/rules\"",
+    "emulators": "pnpm --filter @elp/functions build && cross-env FIREBASE_CLI_EXPERIMENTS=webframeworks firebase emulators:start --only auth,firestore,functions --project demo-elp",
     "format": "prettier --write ."
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",
+    "cross-env": "^7.0.3",
     "firebase": "^11.1.0",
     "firebase-tools": "^13.29.1",
     "prettier": "^3.4.2",

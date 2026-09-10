@@ -11,6 +11,9 @@ importers:
       '@firebase/rules-unit-testing':
         specifier: ^4.0.1
         version: 4.0.1(firebase@11.10.0)
+      cross-env:
+        specifier: ^7.0.3
+        version: 7.0.3
       firebase:
         specifier: ^11.1.0
         version: 11.10.0

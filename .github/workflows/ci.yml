@@ -12,6 +12,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # firebase.json declara hosting com frameworksBackend (Next.js);
+      # o CLI recusa qualquer comando de emulador sem este experimento.
+      FIREBASE_CLI_EXPERIMENTS: webframeworks
     steps:
       - uses: actions/checkout@v4
 
