@@ -21,6 +21,9 @@ export default function MarketingLayout({
             <Link href="/termos" className="hover:underline">
               Termos
             </Link>
+            <Link href="/entrar" className="font-medium hover:underline">
+              Entrar
+            </Link>
           </nav>
         </div>
       </header>

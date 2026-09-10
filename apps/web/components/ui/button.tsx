@@ -18,6 +18,20 @@ const sizes: Record<Size, string> = {
   lg: "h-12 px-6 text-base",
 };
 
+const base =
+  "inline-flex items-center justify-center rounded-md font-medium transition-colors " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 " +
+  "disabled:pointer-events-none disabled:opacity-50";
+
+export function buttonClassName(opts?: {
+  variant?: Variant;
+  size?: Size;
+  className?: string;
+}) {
+  const { variant = "primary", size = "md", className } = opts ?? {};
+  return cn(base, variants[variant], sizes[size], className);
+}
+
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -28,14 +42,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", ...props }, ref) => (
     <button
       ref={ref}
-      className={cn(
-        "inline-flex items-center justify-center rounded-md font-medium transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-        "disabled:pointer-events-none disabled:opacity-50",
-        variants[variant],
-        sizes[size],
-        className,
-      )}
+      className={buttonClassName({ variant, size, className })}
       {...props}
     />
   ),
