@@ -27,10 +27,10 @@ O SDD original não tratava privacidade como requisito — apenas "segurança" g
 ### 3. Fluxo de cadastro (revisa RF-001, cria RF-021)
 
 - Professor: aceite de Termos + Política de Privacidade em checkbox **não pré-marcado**, com data/hora e versão do texto registrados.
-- Aluno: coleta de **data de nascimento** para determinar se é menor.
+- Aluno: **declara apenas se tem 18 anos ou mais** (sem data de nascimento — minimização, RIPD seção 3.2). Guardado como `users.isMinor` (booleano).
   - Maior de 18: aceite próprio.
-  - Menor de 18: **não há cadastro self-service** — a conta é criada/vinculada pelo professor ou escola, que declara ter obtido o consentimento do responsável legal, usando um **modelo de termo** fornecido pela plataforma. A plataforma registra a declaração; verificação reforçada (e-mail ao responsável, upload do termo) fica como questão em aberto.
-- Minimização: aluno menor não fornece telefone, endereço, foto ou qualquer dado não essencial ao exercício.
+  - Menor de 18: **não há cadastro self-service** — a conta é criada/vinculada pelo professor ou escola, que declara ter obtido o consentimento do responsável legal, usando um **modelo de termo** fornecido pela plataforma. A plataforma registra a declaração. Verificação reforçada (e-mail de confirmação ao responsável, upload do termo) — **aceito o risco no MVP** (R4 do RIPD), com plano de reforço pós-lançamento.
+- Minimização: aluno menor não fornece data de nascimento, telefone, endereço, foto ou qualquer dado não essencial ao exercício.
 
 ### 4. Direitos do titular (Art. 18) — cria RF-020
 
@@ -47,7 +47,7 @@ O SDD original não tratava privacidade como requisito — apenas "segurança" g
 
 - **RIPD** (Relatório de Impacto à Proteção de Dados Pessoais) elaborado antes do go-live — obrigatório pelo tratamento de dados de menores. É bloqueio da Fase 7.
 - **Registro das operações de tratamento** (Art. 37) mantido em `docs/lgpd/registro-de-tratamento.md`.
-- Plano de resposta a incidentes com notificação à ANPD e aos titulares (Art. 48).
+- **Plano de resposta a incidentes** (Art. 48) em `docs/lgpd/plano-resposta-incidentes.md` — versão simples para o MVP; **teste (tabletop) obrigatório antes do go-live**.
 - Security Rules + App Check (já previstos) são parte das medidas técnicas; princípio do menor privilégio nas Functions.
 - Logs de auditoria não registram dados pessoais além do necessário. Acesso de suporte a dados de um professor (ADR-009, Fase 8) é **sempre auditado, nunca silencioso**.
 

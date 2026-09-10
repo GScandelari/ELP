@@ -1,6 +1,6 @@
 # SDD — English Learning Classroom
 
-**Versão:** 0.3.1  
+**Versão:** 0.3.2  
 **Status:** Draft / Baseline para descoberta e modelagem  
 **Tipo:** Software Design Document (SDD)  
 **Objetivo:** Especificar uma plataforma web de apoio ao ensino de inglês, com foco em leitura, escrita, vocabulário, significado, tradução/localização e avaliação.
@@ -10,6 +10,8 @@
 **Atualização 0.3.0:** questões em aberto (seção 29) respondidas — decisões registradas em `docs/OPEN-QUESTIONS.md`. Impacto de modelo: (a) a **atividade é reutilizável em várias salas** — deixa de ser filha de uma sala e passa a ser um repositório do professor, aplicada às turmas via *atribuição* (ADR-012); (b) **nota e gabarito não são exibidos ao aluno até a liberação** dos resultados (ADR-013); (c) **sem administrador com UI no MVP** — onboarding e suporte por procedimento manual documentado (`docs/operations/onboarding-mvp.md`). Seções afetadas: 7, 11, 12, 13, 14, RF-008/010/011/012/017, RN-005/006/007 e novas RN-011/RN-012.
 
 **Atualização 0.3.1:** uma atividade do repositório torna-se **imutável (`LOCKED`) assim que o primeiro aluno a inicia** em qualquer sala; para corrigi-la o professor a **clona** e pode substituir a atribuição nas salas onde ninguém começou (ADR-014). Nova RN-013; ajustes em RF-011, 7.4, 7.4.1 e 12.1; nova RF-022.
+
+**Atualização 0.3.2:** o cadastro **não coleta mais data de nascimento** — o aluno só declara se tem 18 anos ou mais (`is_minor` em `users`), por minimização (recomendação do RIPD). Ajustes em RF-021 e 7.1.
 
 ---
 
@@ -326,7 +328,7 @@ Para dados de alunos menores, as solicitações do responsável legal são atend
 No cadastro:
 
 - o professor aceita Termos e Política de Privacidade em nome próprio;
-- o aluno informa data de nascimento (ou faixa etária);
+- o aluno **declara apenas** se tem 18 anos ou mais — a plataforma **não coleta data de nascimento** (minimização, ver RIPD seção 3.2); o resultado é guardado como `isMinor` (booleano) em `users/{uid}`;
 - aluno maior de 18 anos completa o cadastro com aceite próprio;
 - aluno menor de 18 anos não faz cadastro self-service: a conta é criada/vinculada pelo professor ou escola, que declara ter obtido o consentimento do responsável legal, usando o modelo de termo fornecido pela plataforma (ver ADR-011).
 
@@ -514,6 +516,7 @@ User
 - password_hash
 - role
 - status
+- is_minor              # true = aluno menor de 18 (só declaração, sem data de nascimento — RF-021)
 - created_at
 - updated_at
 ```

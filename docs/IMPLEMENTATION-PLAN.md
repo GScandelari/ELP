@@ -98,9 +98,11 @@ O modelo relacional do SDD (seção 7 e 18) vira a seguinte estrutura de coleç�
 
 ```text
 users/{uid}
-  name, email, role, status, createdAt, updatedAt
+  name, email, role, status, isMinor, createdAt, updatedAt
   # role é espelhado como custom claim no token; o documento é a fonte
-  # de verdade legível pelo client, o claim é o que as rules verificam
+  # de verdade legível pelo client, o claim é o que as rules verificam.
+  # isMinor: booleano, só a declaração "tem 18+?" — sem data de
+  # nascimento (minimização, RIPD seção 3.2 / ADR-011)
 
 accounts/{accountId}
   status (ACTIVE | SUSPENDED | TRIAL), createdAt
@@ -310,7 +312,7 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 - Cloud Function que espelha `role` escolhido no cadastro como custom claim.
 - Documento `users/{uid}` criado automaticamente no cadastro.
 - Telas de registro/login/logout (RF-001, RF-002).
-- Age gate no cadastro do aluno e fluxo de vínculo de aluno menor pelo professor/escola (RF-021).
+- Age gate no cadastro do aluno (só a declaração "18 anos ou mais?", sem data de nascimento → `users.isMinor`) e fluxo de vínculo de aluno menor pelo professor/escola (RF-021).
 - Textos legais versionados (`apps/web/content/`) e função `recordConsent` (callable) gravando `consents/{uid}` no aceite (RF-019).
 - Security Rules básicas de `users/{uid}` e `consents/{uid}` (RF-003).
 - **Critério de saída:** RF-001 a RF-003, RF-019, RF-021 e UC-001 do SDD passam em teste E2E.
@@ -470,5 +472,5 @@ elp/
 1. Questões em aberto respondidas (ver `docs/OPEN-QUESTIONS.md`) — modelo de dados e fases já atualizados (ADR-012, ADR-013, ADR-014).
 2. Repositório GitHub sincronizado: `https://github.com/GScandelari/ELP.git`.
 3. ✅ Encarregado (DPO) designado: Stanke Scandelari (stanke399@gmail.com). ✅ Rascunho de Política de Privacidade + termo de consentimento em `docs/lgpd/termos-e-consentimento.md`. Pendente: nome/CNPJ da controladora, Termos de Uso, revisão jurídica (pós-MVP).
-4. RIPD em v1.0 rascunho (`docs/lgpd/ripd.md`) — completar os 9 itens pendentes ao longo das fases e assinar antes do go-live (Fase 7). Ação já apontada pelo RIPD: trocar "data de nascimento" por "faixa etária (maior/menor de 18)" no cadastro.
+4. RIPD em v1.1 rascunho (`docs/lgpd/ripd.md`) — decididos R3 (MFA adiado), R4 (aceito no MVP com plano de reforço) e R9 (plano simples de incidentes criado, teste obrigatório antes do go-live). Cadastro já sem data de nascimento (só `isMinor`). Itens restantes verificados antes do lançamento (Fase 7).
 5. Iniciar Fase 0, criando os projetos Firebase já em `southamerica-east1` e usando `accountId` no schema desde o primeiro commit de código.

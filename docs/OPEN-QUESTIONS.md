@@ -149,10 +149,18 @@ Cada item: **pergunta original** → **impacto técnico se a resposta mudar** �
 
 ## Como usar este documento
 
-As decisões acima já foram refletidas em `SDD.md` (v0.3.0), `IMPLEMENTATION-PLAN.md` (v0.4.0) e nos ADR-012/013. Se uma decisão mudar, atualize aqui a linha **Decisão**, registre o impacto e propague para o SDD, o plano e os ADRs afetados (processo da seção 28 do SDD).
+As decisões acima já foram refletidas em `SDD.md`, `IMPLEMENTATION-PLAN.md` e nos ADR-012/013/014. Se uma decisão mudar, atualize aqui a linha **Decisão**, registre o impacto e propague para o SDD, o plano e os ADRs afetados (processo da seção 28 do SDD).
 
-Decisões ainda dependentes de terceiros (não bloqueiam a Fase 0):
+### Decisões de LGPD tomadas em 2026-09-10 (a partir do RIPD)
 
-- **Termo de consentimento** (professor / aluno / responsável): redigir uma versão simples agora; endurecer com apoio jurídico após o MVP.
+- **Cadastro sem data de nascimento:** o aluno só declara se tem 18 anos ou mais (`isMinor`). Refletido em SDD RF-021/7.1 e ADR-011.
+- **MFA para professor (risco R3):** adiado para depois do MVP.
+- **Consentimento parental (risco R4):** aceito no MVP com base na declaração do professor; plano de reforço (e-mail ao responsável + upload do termo) pós-lançamento.
+- **Plano de resposta a incidentes (risco R9):** versão simples criada (`lgpd/plano-resposta-incidentes.md`); teste de mesa obrigatório antes do lançamento.
+- **9 pendências do RIPD:** verificadas antes do lançamento (Fase 7).
+
+### Decisões ainda dependentes de terceiros (não bloqueiam a Fase 0)
+
+- **Termo de consentimento** (professor / aluno / responsável): rascunho pronto (`lgpd/termos-e-consentimento.md`); endurecer com apoio jurídico após o MVP.
 - **Prazos de retenção** e **modelo de DPA para escolas:** confirmar com jurídico quando houver.
-- **Encarregado (DPO):** e-mail do responsável pelo projeto no MVP; reavaliar serviço dedicado com volume.
+- **Nome / CPF ou CNPJ da controladora:** definir antes de publicar os textos legais.

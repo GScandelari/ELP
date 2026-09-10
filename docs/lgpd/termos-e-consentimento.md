@@ -26,7 +26,7 @@ A ELP (English Learning Platform) é uma plataforma web em que professores de in
 
 ### Quais dados tratamos
 - **Professor:** nome, e-mail.
-- **Aluno:** nome, e-mail, data de nascimento (para saber se é menor de idade), respostas e notas das atividades.
+- **Aluno:** nome, e-mail, a informação de ter ou não 18 anos completos (não pedimos a data de nascimento), respostas e notas das atividades.
 - **Uso da plataforma:** registros de acesso (data, hora, IP) para segurança.
 - **Cookies:** apenas os estritamente necessários para manter você conectado e proteger o acesso. Não usamos cookies de publicidade nem de medição de audiência.
 
@@ -67,7 +67,7 @@ _O professor ou a escola coleta este termo do responsável **antes** de cadastra
 >
 > Eu, ______________________________________________ (nome completo), responsável legal por ______________________________________________ (nome do aluno), declaro que:
 >
-> - **autorizo** o cadastro do aluno na plataforma ELP e o tratamento dos seus dados pessoais (nome, e-mail, data de nascimento, respostas e notas das atividades) para fins **exclusivamente educacionais**, sob responsabilidade do(a) professor(a) / escola ______________________________________________;
+> - **autorizo** o cadastro do aluno na plataforma ELP e o tratamento dos seus dados pessoais (nome, e-mail, respostas e notas das atividades) para fins **exclusivamente educacionais**, sob responsabilidade do(a) professor(a) / escola ______________________________________________;
 > - fui informado(a) de que posso solicitar, a qualquer momento, o **acesso, a correção ou a exclusão** desses dados, pelo professor/escola ou pelo Encarregado de Proteção de Dados da ELP (**stanke399@gmail.com**);
 > - fui informado(a) de que os dados são hospedados em infraestrutura do Google/Firebase e tratados conforme a Política de Privacidade da ELP.
 >
