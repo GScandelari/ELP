@@ -68,7 +68,7 @@ jobs:
           java-version: "17"
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Install Playwright (chromium)
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm run test:e2e:browsers
       - name: E2E (cadastro -> login)
         run: pnpm test:e2e
       - uses: actions/upload-artifact@v4
