@@ -1,0 +1,28 @@
+{
+  "name": "elp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ELP — English Learning Platform (monorepo)",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @elp/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-elp \"vitest run --dir tests/rules\"",
+    "emulators": "pnpm --filter @elp/functions build && firebase emulators:start --only auth,firestore,functions --project demo-elp",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.1.0",
+    "firebase-tools": "^13.29.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

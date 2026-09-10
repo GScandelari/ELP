@@ -296,15 +296,17 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 
 ### Fase 0 — Fundação (1–2 semanas)
 
-- Criar 3 projetos Firebase: `elp-dev`, `elp-staging`, `elp-prod`, **todos com Firestore/Functions na região `southamerica-east1`** (irreversível — ver seção 3).
-- Aceitar o Adendo de Tratamento de Dados (DPA) do Google Cloud em cada projeto e arquivar a evidência em `docs/lgpd/dpa/`.
-- Estruturar monorepo: `apps/web` (Next.js, incluindo o grupo de rotas `(marketing)` da landing — ADR-010), `functions/`, `docs/`.
-- Configurar Firebase Emulator Suite (Auth, Firestore, Functions, Hosting) para desenvolvimento local sem custo.
-- Pipeline CI (GitHub Actions): lint + testes + preview channel do Firebase Hosting em cada PR.
-- Formalizar as ADRs pendentes (seção 25 do SDD, adaptadas — ver `docs/adr/`).
-- Shell da landing page no ar (estrutura + páginas legais como rascunho versionado); conteúdo final fica para a Fase 7.
-- Designar o encarregado (DPO) e abrir o RIPD (`docs/lgpd/ripd.md`) como documento vivo.
-- **Critério de saída:** `firebase emulators:start` sobe os 4 serviços, um "hello world" do Next.js conversa com o emulador de Auth, e `elp-dev` está confirmado na região correta.
+- ✅ Estruturar monorepo pnpm: `apps/web` (Next.js App Router + Tailwind + shadcn/ui, com o grupo de rotas `(marketing)` da landing — ADR-010), `functions/`, `docs/`. Ver `docs/SETUP.md`.
+- ✅ Firebase Emulator Suite configurado (`firebase.json` — Auth, Firestore, Functions, Hosting).
+- ✅ `firestore.rules` e `firestore.indexes.json` esboçados a partir dos ADRs; `tests/rules/` com testes de fumaça.
+- ✅ CI (GitHub Actions): lint + typecheck + testes + build + testes de rules em cada PR.
+- ✅ `deploy.yml` pronto (preview por PR, staging no merge) — **inativo até criar os secrets**.
+- ✅ Shell da landing (`/`, `/privacidade`, `/termos`, `/cookies`) com os textos legais em MDX; conteúdo final na Fase 7.
+- ✅ Encarregado (DPO) designado; RIPD v1.1 e plano de incidentes em `docs/lgpd/`.
+- ⬜ Criar 3 projetos Firebase: `elp-dev`, `elp-staging`, `elp-prod`, **todos com Firestore/Functions na região `southamerica-east1`** (irreversível — ver seção 3), plano Blaze + alerta de orçamento.
+- ⬜ Aceitar o DPA do Google Cloud em cada projeto e arquivar a evidência em `docs/lgpd/dpa/`.
+- ⬜ Preencher `.firebaserc` com os IDs reais e criar os secrets `FIREBASE_SERVICE_ACCOUNT_*` no GitHub.
+- **Critério de saída:** `pnpm emulators` sobe Auth/Firestore/Functions, a home do Next.js confirma "Auth emulator conectado", `/ping` responde nas Functions, e `elp-dev` está confirmado na região correta.
 
 ### Fase 1 — Identity & Access (2–3 semanas)
 

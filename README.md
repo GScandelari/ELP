@@ -16,17 +16,30 @@ O MVP inclui uma landing page pública para divulgação (ADR-010) e é desenvol
 - [`docs/lgpd/`](docs/lgpd/) — artefatos de conformidade com a LGPD: registro das operações de tratamento, RIPD, evidências de DPA.
 - [`docs/operations/`](docs/operations/) — guia de onboarding e suporte manual do MVP (sem portal admin).
 - [`docs/adr/`](docs/adr/) — Architecture Decision Records.
+- [`docs/SETUP.md`](docs/SETUP.md) — como rodar o projeto localmente.
 
 ## Stack
 
-- **Frontend:** Next.js + React + TypeScript, Firebase Hosting.
+- **Frontend:** Next.js (App Router) + React + TypeScript + Tailwind + shadcn/ui, Firebase Hosting.
 - **Backend:** Cloud Functions for Firebase (2ª geração), Firestore Security Rules.
-- **Banco de dados:** Cloud Firestore.
+- **Banco de dados:** Cloud Firestore (região `southamerica-east1`).
 - **Autenticação:** Firebase Authentication (custom claims para RBAC).
+- **Monorepo:** pnpm workspaces (`apps/web`, `functions`).
 - **Privacidade:** conformidade com a LGPD por design — base legal por operação, registro de consentimento, cookies essenciais no MVP.
 
 Ver `docs/adr/` para o racional de cada escolha.
 
+## Desenvolvimento
+
+```bash
+corepack enable pnpm && pnpm install
+cp apps/web/.env.local.example apps/web/.env.local
+pnpm emulators   # terminal 1
+pnpm dev         # terminal 2  ->  http://localhost:3000
+```
+
+Detalhes em [`docs/SETUP.md`](docs/SETUP.md).
+
 ## Status
 
-Fase de planejamento — ainda sem código. Questões em aberto do SDD já respondidas (ver `docs/OPEN-QUESTIONS.md`). Ver `docs/IMPLEMENTATION-PLAN.md` seção 6 para as fases previstas, começando pela Fase 0 (fundação: setup dos projetos Firebase na região `southamerica-east1`, monorepo, CI/CD, emuladores, shell da landing page e abertura do RIPD).
+**Fase 0 (fundação) em andamento.** Questões em aberto do SDD respondidas (`docs/OPEN-QUESTIONS.md`). Scaffold do monorepo, Emulator Suite, CI e shell da landing page já no repositório — ver `docs/SETUP.md`. Falta: criar os projetos Firebase (`southamerica-east1`) e ligar o deploy. Próximas fases em `docs/IMPLEMENTATION-PLAN.md` seção 6.

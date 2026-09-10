@@ -1,12 +1,36 @@
+# dependencies
 node_modules/
+.pnpm-store/
+
+# build output
 .next/
+out/
 dist/
 lib/
+*.tsbuildinfo
+
+# env
 .env
 .env.local
+.env.*.local
+
+# firebase
 .firebase/
 firebase-debug.log
 firestore-debug.log
+database-debug.log
+pubsub-debug.log
 ui-debug.log
+*-debug.log
+firebase-export-*/
+.runtimeconfig.json
+
+# service account keys — never commit
+*serviceAccount*.json
+*service-account*.json
+
+# misc
 *.log
 .DS_Store
+coverage/
+.vitest/
