@@ -1,0 +1,142 @@
+rules_version = '2';
+
+// ELP - Firestore Security Rules
+// Base: docs/IMPLEMENTATION-PLAN.md secao 4 e ADR-005, 009, 011, 012, 013, 014.
+// Regra geral: leituras e escritas simples aqui; toda escrita que determina
+// nota, unicidade, lock de atividade ou consentimento passa por Cloud Function
+// (Admin SDK, que ignora estas regras).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- helpers ----
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function roleOf() {
+      return isSignedIn() ? request.auth.token.get('role', '') : '';
+    }
+    function hasRole(r) {
+      return roleOf() == r;
+    }
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    function classData(classId) {
+      return get(/databases/$(database)/documents/classes/$(classId)).data;
+    }
+    function isAccountOwner(classId) {
+      return isSignedIn() && classData(classId).accountId == request.auth.uid;
+    }
+    function isEnrolledStudent(classId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/classes/$(classId)/enrollments/$(request.auth.uid));
+    }
+    function activityOf(activityId) {
+      return get(/databases/$(database)/documents/activities/$(activityId)).data;
+    }
+    function attemptOf(attemptId) {
+      return get(/databases/$(database)/documents/attempts/$(attemptId)).data;
+    }
+
+    // ---- users ----
+    match /users/{uid} {
+      allow read: if isSelf(uid) || hasRole('admin');
+      allow create: if isSelf(uid);
+      allow update: if isSelf(uid) || hasRole('admin');
+      allow delete: if false; // deleteUserData (Cloud Function)
+    }
+
+    // ---- accounts (ADR-009) ----
+    match /accounts/{accountId} {
+      allow read: if isSelf(accountId) || hasRole('admin');
+      allow write: if false; // Cloud Functions
+    }
+
+    // ---- consent records (ADR-011) - imutaveis, escritos por Cloud Function ----
+    match /consents/{uid}/records/{recordId} {
+      allow read: if isSelf(uid) || hasRole('admin');
+      allow write: if false;
+    }
+
+    // ---- enrollment codes - apenas via Cloud Function ----
+    match /enrollmentCodes/{code} {
+      allow read, write: if false;
+    }
+
+    // ---- classes ----
+    match /classes/{classId} {
+      allow read: if isAccountOwner(classId) || isEnrolledStudent(classId);
+      allow create: if hasRole('teacher')
+        && request.resource.data.accountId == request.auth.uid;
+      allow update, delete: if isAccountOwner(classId);
+
+      match /enrollments/{studentId} {
+        allow read: if isAccountOwner(classId) || isSelf(studentId);
+        allow write: if false; // joinClassByCode / inscricao manual (Cloud Function)
+      }
+
+      // atribuicao de uma atividade a uma sala (ADR-012)
+      match /assignments/{assignmentId} {
+        allow read: if isAccountOwner(classId)
+          || (isEnrolledStudent(classId) && resource.data.status == 'PUBLISHED');
+        allow write: if isAccountOwner(classId);
+        // publishAssignment / swapAssignmentActivity / releaseAssignmentResults via callable
+      }
+
+      match /resultsSummary/{studentId} {
+        allow read: if isAccountOwner(classId) || isSelf(studentId);
+        allow write: if false; // agregacao (Cloud Function)
+      }
+    }
+
+    // ---- repositorio de atividades do professor (ADR-012 / ADR-014) ----
+    match /activities/{activityId} {
+      allow read: if hasRole('teacher') && resource.data.accountId == request.auth.uid;
+      allow create: if hasRole('teacher')
+        && request.resource.data.accountId == request.auth.uid
+        && request.resource.data.get('locked', false) == false;
+      allow update: if hasRole('teacher')
+        && resource.data.accountId == request.auth.uid
+        && resource.data.get('locked', false) == false; // LOCKED e imutavel (ADR-014)
+      allow delete: if hasRole('teacher') && resource.data.accountId == request.auth.uid;
+      // locked / status LOCKED / clonedFrom sao escritos por Cloud Function
+
+      match /items/{itemId} {
+        allow read: if hasRole('teacher')
+          && activityOf(activityId).accountId == request.auth.uid;
+        allow write: if hasRole('teacher')
+          && activityOf(activityId).accountId == request.auth.uid
+          && activityOf(activityId).get('locked', false) == false;
+      }
+    }
+
+    // ---- gabarito congelado - nunca legivel pelo client (ADR-012 / ADR-013) ----
+    match /assignmentKeys/{assignmentId} {
+      allow read, write: if false; // apenas Admin SDK em submitAttempt
+    }
+
+    // ---- attempts (ADR-006 / ADR-013) ----
+    match /attempts/{attemptId} {
+      allow read: if isSignedIn() && (
+        resource.data.studentId == request.auth.uid
+        || isAccountOwner(resource.data.classId)
+      );
+      allow create, update, delete: if false;
+      // createAttempt / submitAttempt sao callables (Admin SDK)
+
+      // respostas: o aluno dono escreve enquanto a tentativa esta IN_PROGRESS (RF-013)
+      match /answers/{itemId} {
+        allow read: if isSignedIn() && (
+          attemptOf(attemptId).studentId == request.auth.uid
+          || isAccountOwner(attemptOf(attemptId).classId)
+        );
+        allow write: if isSignedIn()
+          && attemptOf(attemptId).studentId == request.auth.uid
+          && attemptOf(attemptId).get('status', '') == 'IN_PROGRESS';
+      }
+    }
+
+    // Qualquer caminho nao listado acima e negado por padrao.
+  }
+}

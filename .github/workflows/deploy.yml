@@ -1,0 +1,75 @@
+name: Deploy
+
+# PRE-REQUISITOS (ver docs/SETUP.md):
+#   1. Os projetos Firebase elp-dev / elp-staging / elp-prod devem existir.
+#   2. Criar os secrets no repositorio:
+#        FIREBASE_SERVICE_ACCOUNT_STAGING  (JSON da conta de servico do elp-staging)
+#        FIREBASE_SERVICE_ACCOUNT_PROD     (JSON da conta de servico do elp-prod)
+#   3. Habilitar a integracao de Web Frameworks: firebase experiments:enable webframeworks
+#
+# Enquanto os secrets nao existem, este workflow e ignorado (guard abaixo).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  preview:
+    # deploy de preview a cada PR
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard — secret configurado?
+        id: guard
+        run: echo "ready=${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING != '' }}" >> "$GITHUB_OUTPUT"
+      - if: steps.guard.outputs.ready == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - if: steps.guard.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.guard.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.guard.outputs.ready == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}
+          projectId: elp-staging
+          expires: 7d
+
+  staging:
+    # deploy para elp-staging ao mesclar na main
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard — secret configurado?
+        id: guard
+        run: echo "ready=${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING != '' }}" >> "$GITHUB_OUTPUT"
+      - if: steps.guard.outputs.ready == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - if: steps.guard.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.guard.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.guard.outputs.ready == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}
+          projectId: elp-staging
+          channelId: live
+
+  # Deploy para producao (elp-prod) fica MANUAL/tagueado — ver ADR-008.

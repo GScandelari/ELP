@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 40%;
+  --primary: 221 83% 40%;
+  --primary-foreground: 0 0% 100%;
+  --border: 214 32% 88%;
+  --radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 96%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    --border: 217 33% 22%;
+  }
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Conteúdo institucional / legal renderizado de MDX */
+.prose-legal {
+  max-width: 42rem;
+}
+.prose-legal h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+.prose-legal h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+.prose-legal h3 {
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+.prose-legal p,
+.prose-legal ul,
+.prose-legal ol {
+  margin-bottom: 1rem;
+  line-height: 1.7;
+}
+.prose-legal ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.prose-legal ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.prose-legal a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+.prose-legal strong {
+  font-weight: 600;
+}
