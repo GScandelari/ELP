@@ -329,7 +329,7 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 
 - **Repositório de atividades do professor** (`activities/{activityId}` + `items`), máquina de estados de autoria DRAFT → READY → LOCKED → ARCHIVED (ADR-012 / ADR-014).
 - **Atribuição por sala:** `publishAssignment` (callable) que valida a configuração (RN-006), recusa atividade `LOCKED` (RN-013), congela `contentSnapshot` (enunciado) e `assignmentKeys` (gabarito), e cria `classes/{classId}/assignments/{assignmentId}` — a mesma atividade pode ser atribuída a N salas (RN-012).
-- **Versionamento (ADR-014):** `cloneActivity` (callable) — duplica atividade + itens numa nova `DRAFT` com `clonedFrom`; `swapAssignmentActivity` (callable) — troca a atividade de um assignment com `startedCount == 0`, re-congelando snapshot e chave.
+- **Versionamento (ADR-014):** `cloneActivity` (callable) — duplica atividade + itens numa nova `DRAFT` com `clonedFrom` (disponível em qualquer atividade); `swapAssignmentActivity` (callable) — atualiza um assignment com `startedCount == 0` a partir de uma atividade de origem (a mesma, após edição no lugar, ou o clone), re-congelando snapshot e chave. Tela "Aplicar esta versão" que agrupa as salas por elegibilidade (ver ADR-014 §7).
 - Máquina de estados do assignment: PUBLISHED → CLOSED (RF-011).
 - Builder + Renderer para os 4 tipos do MVP: fill-in-blanks, meaning matching, translation/localization, multiple choice (seção 9.1–9.4 do SDD).
 - Handlers `validate` / `toStudentContent` / `score` por tipo nas Cloud Functions.
