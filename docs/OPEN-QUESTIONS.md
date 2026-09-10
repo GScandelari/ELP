@@ -113,12 +113,12 @@ Cada item: **pergunta original** → **impacto técnico se a resposta mudar** �
 ### Quem será o encarregado (DPO)?
 - **Impacto:** obrigatório ter um canal do encarregado publicado na Política de Privacidade (Art. 41). Pode ser uma pessoa interna ou um serviço terceirizado ("DPO as a service").
 - **Sugestão:** no início, o próprio responsável pelo projeto acumula a função, com um e-mail dedicado (`privacidade@...`); reavaliar a contratação de serviço especializado quando houver volume de titulares.
- - **Decisão**: Neste início, considerar meu prório email como DPO.
+ - **Decisão**: Neste início, considerar meu prório email como DPO. → **Designado:** Stanke Scandelari, stanke399@gmail.com (registrado em `lgpd/README.md`, `lgpd/registro-de-tratamento.md` e na Política de Privacidade).
 
 ### Qual a base legal para tratar dados de alunos inseridos pelo professor?
 - **Impacto:** define se cada aluno precisa consentir individualmente ou se o professor/escola ampara o tratamento por legítimo interesse educacional.
 - **Sugestão:** legítimo interesse do professor/escola para o fim pedagógico (Art. 7º, IX) para alunos maiores; para menores, consentimento do responsável legal (Art. 14) sempre. Confirmar com o jurídico e permitir configuração por perfil de cliente (escola x professor autônomo).
- - **Decisão**: Neste momento não há uma equipe jurídica. Sugiro criarmos um termo simples e básico para o professor, alunos e responsáveis consentir. Ponto de melhoria real após o lançamento do MVP com validações mais rigorosas, principalmente para alunos menores.
+ - **Decisão**: Neste momento não há uma equipe jurídica. Sugiro criarmos um termo simples e básico para o professor, alunos e responsáveis consentir. Ponto de melhoria real após o lançamento do MVP com validações mais rigorosas, principalmente para alunos menores. → **Feito (rascunho):** `lgpd/termos-e-consentimento.md`.
 
 ### Como verificar o consentimento do responsável legal de um aluno menor?
 - **Impacto:** define o fluxo de RF-021 e o valor probatório do registro em `consents/{uid}`.

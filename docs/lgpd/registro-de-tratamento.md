@@ -22,5 +22,6 @@ Os dados são processados em infraestrutura do Google Cloud/Firebase na região 
 
 ## Titulares e canais
 
+- **Encarregado (DPO):** Stanke Scandelari — stanke399@gmail.com.
 - Direitos do titular atendidos pelo portal (exportar, corrigir, excluir) e pelo canal do encarregado (Art. 18, prazo de 15 dias — Art. 19).
 - Solicitações relativas a alunos menores são feitas pelo responsável legal via professor/escola ou pelo canal do encarregado.

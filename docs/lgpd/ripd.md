@@ -4,6 +4,8 @@
 
 **Status:** ⬜ Aberto na Fase 0 · ⬜ Rascunho · ⬜ Revisado pelo jurídico · ⬜ Assinado (bloqueio de go-live — Fase 7)
 
+**Encarregado (DPO) responsável:** Stanke Scandelari — stanke399@gmail.com
+
 ## 1. Descrição do tratamento
 
 _(preencher: natureza, escopo, contexto e finalidades — referenciar `registro-de-tratamento.md`)_
@@ -32,4 +34,4 @@ _(referenciar RNF-002, RNF-008, ADR-005, ADR-011)_
 
 ## 6. Conclusão e parecer do encarregado
 
-_(preencher)_
+_(preencher — parecer de Stanke Scandelari, stanke399@gmail.com, antes do go-live)_

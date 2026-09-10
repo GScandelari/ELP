@@ -36,7 +36,7 @@ O SDD original não tratava privacidade como requisito — apenas "segurança" g
 
 - Autoatendimento no portal: **exportar meus dados** (JSON, portabilidade), **corrigir** cadastro, **excluir** minha conta.
 - Exclusão = **anonimização** das tentativas/respostas (`studentId` substituído por token não reversível, identificadores diretos removidos), preservando as agregações de `resultsSummary`.
-- Prazo de resposta: 15 dias (Art. 19). Canal do encarregado (DPO) publicado na Política de Privacidade.
+- Prazo de resposta: 15 dias (Art. 19). Encarregado (DPO) no MVP: Stanke Scandelari — stanke399@gmail.com; contato publicado na Política de Privacidade (`docs/lgpd/termos-e-consentimento.md`).
 
 ### 5. Retenção e ciclo de vida
 

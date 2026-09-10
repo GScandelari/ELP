@@ -467,8 +467,8 @@ elp/
 
 ## 10. Próximos passos imediatos
 
-1. Questões em aberto respondidas (ver `docs/OPEN-QUESTIONS.md`) — modelo de dados e fases já atualizados (ADR-012, ADR-013).
+1. Questões em aberto respondidas (ver `docs/OPEN-QUESTIONS.md`) — modelo de dados e fases já atualizados (ADR-012, ADR-013, ADR-014).
 2. Repositório GitHub sincronizado: `https://github.com/GScandelari/ELP.git`.
-3. Redigir o termo simples de consentimento (professor, aluno, responsável) — sem equipe jurídica agora; endurecer pós-MVP (decisão registrada em `OPEN-QUESTIONS.md`).
-4. Designar o encarregado (DPO) e abrir o RIPD como documento vivo em `docs/lgpd/`.
+3. ✅ Encarregado (DPO) designado: Stanke Scandelari (stanke399@gmail.com). ✅ Rascunho de Política de Privacidade + termo de consentimento em `docs/lgpd/termos-e-consentimento.md`. Pendente: nome/CNPJ da controladora, Termos de Uso, revisão jurídica (pós-MVP).
+4. Completar o RIPD (`docs/lgpd/ripd.md`) ao longo das fases — assinado antes do go-live (Fase 7).
 5. Iniciar Fase 0, criando os projetos Firebase já em `southamerica-east1` e usando `accountId` no schema desde o primeiro commit de código.
