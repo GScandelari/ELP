@@ -16,7 +16,7 @@ export default function HomePage() {
 
       <div className="mt-8 flex flex-wrap gap-3">
         <Link href="/cadastro" className={buttonClassName({ size: "lg" })}>
-          Criar conta de professor
+          Criar conta
         </Link>
         <Link
           href="/entrar"

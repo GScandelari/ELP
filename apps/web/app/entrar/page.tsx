@@ -94,7 +94,7 @@ export default function EntrarPage() {
         <p className="mt-4 text-sm text-muted-foreground">
           Ainda não tem conta?{" "}
           <Link href="/cadastro" className="underline">
-            Criar conta de professor
+            Criar conta
           </Link>
         </p>
       </div>

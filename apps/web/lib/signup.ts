@@ -1,18 +1,26 @@
 "use client";
 
 import { FirebaseError } from "firebase/app";
-import {
-  createUserWithEmailAndPassword,
-  updateProfile,
-} from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { getFirebase } from "@/lib/firebase";
 
-export type SignupRole = "teacher";
+export type SignupRole = "teacher" | "student";
 
 type FinalizeInput = {
   name: string;
   role: SignupRole;
+  isAdult: boolean;
+  acceptedTerms: boolean;
+  acceptedPrivacy: boolean;
+};
+
+export type RegisterParams = {
+  name: string;
+  email: string;
+  password: string;
+  role: SignupRole;
+  isAdult: boolean;
   acceptedTerms: boolean;
   acceptedPrivacy: boolean;
 };
@@ -22,13 +30,7 @@ type FinalizeInput = {
  * consentimento) via callable `finalizeSignup`. Ao voltar, o chamador deve
  * rodar `refreshClaims()` do useAuth para o token pegar o novo papel.
  */
-export async function registerTeacher(params: {
-  name: string;
-  email: string;
-  password: string;
-  acceptedTerms: boolean;
-  acceptedPrivacy: boolean;
-}) {
+export async function register(params: RegisterParams) {
   const { auth, functions } = getFirebase();
 
   const cred = await createUserWithEmailAndPassword(
@@ -44,7 +46,8 @@ export async function registerTeacher(params: {
   );
   await finalize({
     name: params.name,
-    role: "teacher",
+    role: params.role,
+    isAdult: params.isAdult,
     acceptedTerms: params.acceptedTerms,
     acceptedPrivacy: params.acceptedPrivacy,
   });
@@ -60,7 +63,8 @@ export function signupErrorMessage(err: unknown): string {
       case "auth/weak-password":
         return "A senha precisa ter pelo menos 6 caracteres.";
       case "functions/failed-precondition":
-        return "É necessário aceitar os Termos e a Política de Privacidade.";
+        return err.message ||
+          "É necessário aceitar os Termos e a Política de Privacidade.";
       default:
         return "Não foi possível concluir o cadastro. Tente novamente.";
     }
