@@ -24,8 +24,8 @@ export default function PainelPage() {
         </div>
         <div>
           <dt className="inline font-medium">Papel: </dt>
-          <dd className="inline">
-            {role ?? "não definido (cadastro incompleto — chega na PR 1.2)"}
+          <dd className="inline" data-testid="painel-role">
+            {role ?? "não definido"}
           </dd>
         </div>
       </dl>

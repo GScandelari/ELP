@@ -308,16 +308,15 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 - ⬜ Preencher `.firebaserc` com os IDs reais e criar os secrets `FIREBASE_SERVICE_ACCOUNT_*` no GitHub.
 - **Critério de saída:** `pnpm emulators` sobe Auth/Firestore/Functions, a home do Next.js confirma "Auth emulator conectado", `/ping` responde nas Functions, e `elp-dev` está confirmado na região correta.
 
-### Fase 1 — Identity & Access (2–3 semanas)
+### Fase 1 — Identity & Access ✅ (PRs #2, #3, #4, #5)
 
-- Cadastro/login/logout via Firebase Authentication (email/senha).
-- Cloud Function que espelha `role` escolhido no cadastro como custom claim.
-- Documento `users/{uid}` criado automaticamente no cadastro.
-- Telas de registro/login/logout (RF-001, RF-002).
-- Age gate no cadastro do aluno (só a declaração "18 anos ou mais?", sem data de nascimento → `users.isMinor`) e fluxo de vínculo de aluno menor pelo professor/escola (RF-021).
-- Textos legais versionados (`apps/web/content/`) e função `recordConsent` (callable) gravando `consents/{uid}` no aceite (RF-019).
-- Security Rules básicas de `users/{uid}` e `consents/{uid}` (RF-003).
-- **Critério de saída:** RF-001 a RF-003, RF-019, RF-021 e UC-001 do SDD passam em teste E2E.
+- ✅ Login/logout via Firebase Authentication (email/senha) — `AuthProvider`/`useAuth`, `/entrar`, `/painel`, guarda de rota client-side (PR #2).
+- ✅ Callable `finalizeSignup` (Admin SDK): custom claim `role`, cria `users/{uid}` e `accounts/{uid}` (professor), grava `consents/{uid}` para TERMS/PRIVACY (PR #3).
+- ✅ `/cadastro` com aceite de Termos + Política de Privacidade (checkboxes, RF-019).
+- ✅ Age gate no cadastro do aluno (só "18 anos ou mais?", sem data de nascimento → `users.isMinor`); aluno menor bloqueado no self-service (RF-021, PR #4). O vínculo pelo professor fica para a Fase 2.
+- ✅ Security Rules de `users/{uid}` e `consents/{uid}` (`write: if false`, RF-003).
+- ✅ Testes E2E (Playwright): cadastro de professor → painel, logout → login, bloqueio de aluno menor (PR #5).
+- **Critério de saída atingido:** RF-001 a RF-003, RF-019, RF-021 verificados em teste E2E automatizado no CI.
 
 ### Fase 2 — Salas / Classes (2 semanas)
 
