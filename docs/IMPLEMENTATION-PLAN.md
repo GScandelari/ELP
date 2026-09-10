@@ -470,5 +470,5 @@ elp/
 1. Questões em aberto respondidas (ver `docs/OPEN-QUESTIONS.md`) — modelo de dados e fases já atualizados (ADR-012, ADR-013, ADR-014).
 2. Repositório GitHub sincronizado: `https://github.com/GScandelari/ELP.git`.
 3. ✅ Encarregado (DPO) designado: Stanke Scandelari (stanke399@gmail.com). ✅ Rascunho de Política de Privacidade + termo de consentimento em `docs/lgpd/termos-e-consentimento.md`. Pendente: nome/CNPJ da controladora, Termos de Uso, revisão jurídica (pós-MVP).
-4. Completar o RIPD (`docs/lgpd/ripd.md`) ao longo das fases — assinado antes do go-live (Fase 7).
+4. RIPD em v1.0 rascunho (`docs/lgpd/ripd.md`) — completar os 9 itens pendentes ao longo das fases e assinar antes do go-live (Fase 7). Ação já apontada pelo RIPD: trocar "data de nascimento" por "faixa etária (maior/menor de 18)" no cadastro.
 5. Iniciar Fase 0, criando os projetos Firebase já em `southamerica-east1` e usando `accountId` no schema desde o primeiro commit de código.
