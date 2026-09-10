@@ -301,7 +301,7 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 - ✅ `firestore.rules` e `firestore.indexes.json` esboçados a partir dos ADRs; `tests/rules/` com testes de fumaça.
 - ✅ CI (GitHub Actions): lint + typecheck + testes + build + testes de rules em cada PR.
 - ✅ `deploy.yml` pronto (preview por PR, staging no merge) — **inativo até criar os secrets**.
-- ✅ Shell da landing (`/`, `/privacidade`, `/termos`, `/cookies`) com os textos legais em MDX; conteúdo final na Fase 7.
+- ✅ Shell da landing (`/`, `/privacidade`, `/termos`, `/cookies`) com os textos legais em Markdown (renderizados no servidor com `marked`); conteúdo final na Fase 7.
 - ✅ Encarregado (DPO) designado; RIPD v1.1 e plano de incidentes em `docs/lgpd/`.
 - ⬜ Criar 3 projetos Firebase: `elp-dev`, `elp-staging`, `elp-prod`, **todos com Firestore/Functions na região `southamerica-east1`** (irreversível — ver seção 3), plano Blaze + alerta de orçamento.
 - ⬜ Aceitar o DPA do Google Cloud em cada projeto e arquivar a evidência em `docs/lgpd/dpa/`.
@@ -420,7 +420,7 @@ elp/
 ├── apps/
 │   └── web/                 # Next.js (Teacher Portal + Student Portal)
 │       ├── app/(marketing)/  # landing page pública + páginas legais (ADR-010)
-│       └── content/          # textos institucionais e legais em MDX, versionados
+│       └── content/          # textos institucionais e legais em Markdown, versionados
 ├── functions/
 │   └── src/
 │       ├── auth/             # onUserCreate, custom claims, recordConsent
