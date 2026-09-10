@@ -97,7 +97,9 @@ guard:  token.role == 'student'  &&  users/{uid}.isMinor == false   (defesa em p
 passos: normaliza code
         enrollmentCodes/{code}  -> not-found  => 'not-found' ("código não encontrado")
         classes/{classId}       -> status != 'ACTIVE'  => 'failed-precondition' ("sala não está aceitando inscrições")  (RN-002)
-        classes/{classId}/enrollments/{uid} existe?  => 'already-exists' ("você já está nesta sala")  (RN-003)
+        classes/{classId}/enrollments/{uid}:
+          status == 'ACTIVE'   => 'already-exists' ("você já está nesta sala")  (RN-003)
+          status == 'REMOVED'  => reativa (status = 'ACTIVE'), sem duplicar o doc
 transação: cria enrollment { studentId: uid, enrollmentType: 'SELF_ENROLLMENT',
              status: 'ACTIVE', studentName, studentEmail, createdAt }
            classes/{classId}.studentCount += 1
@@ -129,14 +131,26 @@ saída:  { studentId, enrollmentType, passwordSetupLink? }
 
 > Divisão sugerida: **caso A na PR 2.5**, **caso B (criação de conta + consentimento de menor) na PR 2.6**. Podem ser uma PR só se preferir revisar tudo junto, mas separar isola a superfície jurídica do menor.
 
-### 3.4 `rotateEnrollmentCode` (callable, opcional) — PR 2.7
+### 3.4 `removeStudentFromClass` (callable, mínimo) — RF-005, PR 2.5
+
+```
+input:  { classId, studentId }
+guard:  token.role == 'teacher' && classes/{classId}.accountId == uid  (RN-004)
+efeito: transação — enrollments/{studentId}.status = 'REMOVED'
+        classes/{classId}.studentCount -= 1  (guardando contra < 0)
+saída:  { ok: true }
+```
+
+Não apaga o doc (preserva histórico e futuras attempts); a re-inscrição do mesmo aluno reativa o `status` para `ACTIVE`.
+
+### 3.5 `rotateEnrollmentCode` (callable, opcional) — PR 2.7
 
 ```
 input: { classId } ; guard: dono da sala
 transação: delete enrollmentCodes/{antigo} ; cria enrollmentCodes/{novo} ; classes.enrollmentCode = novo
 ```
 
-### 3.5 Padrões a seguir (do `finalizeSignup`)
+### 3.6 Padrões a seguir (do `finalizeSignup`)
 
 - `onCall` v2, região global já fixada em `index.ts` (`southamerica-east1`).
 - `HttpsError` com códigos canônicos; mensagens em pt-BR prontas p/ exibição.
@@ -265,7 +279,7 @@ Cada PR: escopo fechado, verde no CI (lint/typecheck/test/build/rules/e2e + Sona
 | **2.2** | `feat(web): portal do professor — criar e listar salas` | `RequireRole`; `/salas` (professor); `CreateClassDialog`, `ClassCard`; `/salas/[classId]` com `EnrollmentCodeBadge`; `lib/classes.ts` | UC-002 (UI) |
 | **2.3** | `feat(classes): joinClassByCode` | `functions/src/classes/join-class-by-code.ts`; rule collectionGroup `enrollments`; índice collectionGroup; rules #8–#12; integração `joinClassByCode` (RN-002/003) | RF-006, RN-002, RN-003, UC-003 (backend) |
 | **2.4** | `feat(web): portal do aluno — entrar por código e listar salas` | `/salas` (aluno); `/salas/entrar`; `JoinClassForm` com mapeamento de erros | UC-003 (UI) |
-| **2.5** | `feat(classes): inscrição manual (aluno com conta)` | `addStudentToClass` caso A; `AddStudentDialog` (sem menor); `StudentRoster` | RF-007 (parcial) |
+| **2.5** | `feat(classes): inscrição manual (aluno com conta) + remoção` | `addStudentToClass` caso A; `removeStudentFromClass` (mínimo); `AddStudentDialog` (sem menor); `StudentRoster` com ação de remover | RF-007 (parcial), RF-005 |
 | **2.6** | `feat(classes): inscrição manual de aluno menor + consentimento` | `addStudentToClass` caso B; `GUARDIAN_CONSENT`; `passwordSetupLink`; modelo de termo; rules #13; integração | RF-007, RF-021, ADR-011 |
 | **2.7** | `feat(classes): gerência da sala + E2E + onboarding` | status da sala (editar/ativar/desativar/arquivar) na UI; `rotateEnrollmentCode` (opcional); `e2e/salas.spec.ts`; rascunho `docs/operations/onboarding-mvp.md`; Fase 2 marcada como concluída no IMPLEMENTATION-PLAN | RF-005, critério de saída |
 
@@ -273,15 +287,18 @@ Ordem: 2.1 → 2.2 → 2.3 → 2.4 → (2.5 → 2.6) → 2.7. 2.5/2.6 podem vira
 
 ---
 
-## 8. Riscos e questões em aberto
+## 8. Riscos e questões — decididas
 
-1. **Entrega do convite ao aluno criado pelo professor** — sem SMTP no MVP. Proposta: `generatePasswordResetLink` devolvido ao professor p/ repasse manual. Confirmar que é aceitável (alinhado ao R4 do RIPD). *Decisão necessária antes da PR 2.6.*
-2. **Formato do código** — 6 chars `ABC-234` proposto. Confirmar.
-3. **Rotação de código no MVP** — incluir `rotateEnrollmentCode` (PR 2.7) ou adiar?
-4. **Testes de integração de Functions** — montar a infra agora (`test:functions`) ou só Rules + E2E nesta fase?
-5. **Limites anti-abuso** (salas por professor, alunos por sala) — App Check só na Fase 6; colocar um teto simples no callable agora?
-6. **`studentName` desatualizado no roster** — aceitável até a Fase 6 ter `updateProfile`? (proposta: sim).
-7. **Remoção de aluno da sala** (`status: REMOVED`) — RF-005 fala em "visualizar alunos", não em remover. Incluir um `removeStudentFromClass` mínimo ou deixar p/ depois?
+1. ✅ **Convite do aluno criado pelo professor** — `generatePasswordResetLink` devolvido ao professor p/ repasse manual (R4 do RIPD, risco aceito no MVP).
+2. ✅ **Formato do código** — 6 chars, exibido `ABC-234`, normalizado `ABC234`.
+3. ✅ **Testes de integração de Functions** — montar a infra `test:functions` já nesta fase (a partir da PR 2.1).
+4. ✅ **Remoção de aluno da sala** — incluir um `removeStudentFromClass` **mínimo** (callable do dono; marca `enrollments/{sid}.status = 'REMOVED'` e decrementa `studentCount`). Entra na PR 2.5.
+
+Em aberto (baixo impacto, decidir se/quando aparecerem):
+
+- **Rotação de código** — `rotateEnrollmentCode` fica como opcional na PR 2.7.
+- **Limites anti-abuso** (salas por professor, alunos por sala) — App Check só na Fase 6; sem teto por agora.
+- **`studentName` desatualizado no roster** — aceito até a Fase 6 ter `updateProfile`.
 
 ---
 

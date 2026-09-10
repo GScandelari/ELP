@@ -6,6 +6,7 @@ setGlobalOptions({ region: "southamerica-east1", maxInstances: 10 });
 
 export { ping } from "./health";
 export { finalizeSignup } from "./auth/finalize-signup";
+export { createClass } from "./classes/create-class";
 
 /*
  * -------------------------------------------------------------------------
@@ -14,8 +15,9 @@ export { finalizeSignup } from "./auth/finalize-signup";
  * auth/
  *   recordConsent            (embutido em finalizeSignup por enquanto)
  * classes/
- *   createClass              código único via transação (RN-001)
  *   joinClassByCode          valida sala ativa / não-duplicidade (RN-002, RN-003)
+ *   addStudentToClass        inscrição manual + criação de conta de menor (RF-007, RF-021)
+ *   removeStudentFromClass   marca enrollment como REMOVED (RF-005)
  * activities/
  *   publishAssignment        valida (RN-006); congela contentSnapshot + assignmentKeys
  *   cloneActivity            duplica atividade + itens (ADR-014)

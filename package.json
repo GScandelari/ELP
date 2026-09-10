@@ -14,6 +14,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:rules": "cross-env FIREBASE_CLI_EXPERIMENTS=webframeworks firebase emulators:exec --only firestore --project demo-elp \"vitest run --dir tests/rules\"",
+    "test:functions": "cross-env FIREBASE_CLI_EXPERIMENTS=webframeworks firebase emulators:exec --only firestore,auth --project demo-elp \"pnpm --filter @elp/functions test:integration\"",
     "test:e2e": "playwright test",
     "test:e2e:browsers": "playwright install --with-deps chromium",
     "emulators": "pnpm --filter @elp/functions build && cross-env FIREBASE_CLI_EXPERIMENTS=webframeworks firebase emulators:start --only auth,firestore,functions --project demo-elp",

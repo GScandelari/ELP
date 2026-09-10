@@ -50,6 +50,9 @@ jobs:
       - name: Firestore rules tests
         run: pnpm test:rules
 
+      - name: Functions integration tests
+        run: pnpm test:functions
+
   e2e:
     runs-on: ubuntu-latest
     env:
