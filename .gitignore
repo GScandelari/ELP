@@ -6,7 +6,7 @@ node_modules/
 .next/
 out/
 dist/
-lib/
+/functions/lib/
 *.tsbuildinfo
 
 # env
