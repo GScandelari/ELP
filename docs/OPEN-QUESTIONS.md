@@ -17,6 +17,7 @@ Cada item: **pergunta original** → **impacto técnico se a resposta mudar** �
 - **Impacto:** **bloqueante para a modelagem da Fase 3.** Se sim, `Activity` não pode viver como subcoleção de `classes/{classId}` (ver seção 3.2 do plano de implementação) — precisa ser coleção top-level com relação N:N para salas.
 - **Sugestão:** **não** no MVP (atividade pertence a uma única sala). Simplifica o modelo de dados; reavaliar na Fase 3 do roadmap original (Content Platform), quando "reutilização de conteúdo" já está no escopo.
  - **Decisão**: Sim, no MVP. A atividade criada pelo professor fica no repositório de atividades daquele professor. A atividade pode ser utilizada em N salas distintas.
+ - **Refinamento (2026-09-10, ADR-014):** assim que o primeiro aluno inicia a atividade em qualquer sala, ela fica imutável e não pode ir para novas salas. Correção = clonar e, nas salas onde ninguém começou, substituir pela versão clonada.
 
 ### Uma atividade poderá pertencer a mais de uma sala?
 - Mesma questão da anterior — mantido o mesmo default (não, no MVP).

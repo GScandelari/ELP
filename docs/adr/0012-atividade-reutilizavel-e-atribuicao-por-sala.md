@@ -4,6 +4,8 @@
 
 Aceito — decisão do stakeholder registrada em `docs/OPEN-QUESTIONS.md` (2026-09-09). Substitui a modelagem de `Activity` como subcoleção de `classes/{classId}` descrita nas versões anteriores do plano de implementação.
 
+**Refinado pelo ADR-014** (imutabilidade e versionamento de atividades já iniciadas por alunos).
+
 ## Contexto
 
 O SDD original (seção 7 e 18) modelava `Activity` como filha de uma única sala. As questões em aberto "Professor poderá compartilhar uma atividade entre salas?", "Uma atividade poderá pertencer a mais de uma sala?" e "Conteúdo poderá ser reutilizado entre atividades?" foram respondidas com **sim** já no MVP:
@@ -16,7 +18,7 @@ Isso era explicitamente marcado como **decisão bloqueante para a Fase 3** no pl
 
 ### 1. Duas entidades distintas
 
-- **`activities/{activityId}` — repositório de atividades do professor.** Coleção top-level. É o "conteúdo" da atividade (enunciado, itens, gabarito, pontuação), pertencente a um `accountId`, independente de qualquer sala. Estados de autoria: `DRAFT` (em edição) → `READY` (pronta para atribuir) → `ARCHIVED`.
+- **`activities/{activityId}` — repositório de atividades do professor.** Coleção top-level. É o "conteúdo" da atividade (enunciado, itens, gabarito, pontuação), pertencente a um `accountId`, independente de qualquer sala. Estados de autoria: `DRAFT` (em edição) → `READY` (pronta para atribuir) → `LOCKED` (já iniciada por algum aluno — imutável, ver ADR-014) → `ARCHIVED`.
 - **`classes/{classId}/assignments/{assignmentId}` — atribuição de uma atividade a uma sala.** É a atividade "aplicada" numa turma, com as propriedades que variam por sala: prazo, ordem na lista, número de tentativas permitidas, janela de liberação de resultados. Estados: `PUBLISHED` → `CLOSED`.
 
 ### 2. Snapshot de conteúdo no momento da atribuição
@@ -31,7 +33,7 @@ Consequências:
 - o professor pode continuar editando a atividade no repositório sem afetar as salas onde ela já foi aplicada;
 - alunos leem só o `assignment` da sala em que estão matriculados — não precisam de acesso de leitura à coleção `activities` (a regra de segurança fica simples);
 - o gabarito nunca trafega para o aluno junto com o enunciado — condição necessária para o ADR-013 (liberação controlada de resultados);
-- corrige o risco "aluno começou a tentativa na versão A, professor mudou para a versão B" sem precisar travar a edição da atividade.
+- enquanto nenhum aluno tiver iniciado a atividade, o professor ainda pode editá-la e re-sincronizar as salas sem tentativas; a partir da primeira tentativa a atividade é congelada e a correção passa a ser por clone (ADR-014).
 
 Atualizar uma sala para a versão mais nova da atividade é uma ação explícita do professor (re-publicar o assignment), fora do fluxo automático.
 
@@ -40,7 +42,9 @@ Atualizar uma sala para a versão mais nova da atividade é uma ação explícit
 ```text
 activities/{activityId}                       # repositório do professor
   accountId, title, description, type, difficulty, tags[],
-  status (DRAFT | READY | ARCHIVED), createdAt, updatedAt
+  status (DRAFT | READY | LOCKED | ARCHIVED),
+  locked, lockedAt, clonedFrom,               # ver ADR-014
+  createdAt, updatedAt
 
 activities/{activityId}/items/{itemId}
   position, prompt, configuration, points
@@ -50,6 +54,7 @@ classes/{classId}/assignments/{assignmentId}
   contentSnapshot,                                     # só o enunciado — sem gabarito
   status (PUBLISHED | CLOSED), position, publishedAt, dueDate,
   allowRetry, maxAttempts,
+  startedCount, firstStartedAt,                        # ver ADR-014
   resultsPolicy, resultsReleased, resultsReleasedAt,   # ver ADR-013
   createdAt, updatedAt
 
@@ -65,7 +70,7 @@ attempts/{attemptId}
 
 - `attempts` passa a referenciar `assignmentId` (além de `classId` e `activityId`, mantidos desnormalizados). `max_attempts` (RN-007) é contado por `assignment`, não por atividade — o mesmo aluno pode refazer a "mesma" atividade em salas diferentes.
 - `resultsSummary` da sala passa a ser indexado por `assignmentId`.
-- A Fase 3 ganha o CRUD do repositório de atividades **e** o fluxo de atribuição; a validação de RN-006 (não publicar configuração inválida) roda no `publishAssignment`.
+- A Fase 3 ganha o CRUD do repositório de atividades, o fluxo de atribuição, e as operações `cloneActivity` / `swapAssignmentActivity` (ADR-014); a validação de RN-006 (não publicar configuração inválida) roda no `publishAssignment`.
 - `contentSnapshot` duplica o conteúdo por sala — custo de armazenamento aceitável na escala do MVP; se um dia pesar, dá para mover para uma subcoleção `assignments/{id}/items`.
 - Índice novo: `activities` por `accountId ASC, status ASC, updatedAt DESC` (listar o repositório do professor).
 

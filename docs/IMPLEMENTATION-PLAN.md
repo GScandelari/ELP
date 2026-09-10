@@ -1,8 +1,8 @@
 # Plano de Implementação — ELP (English Learning Platform) sobre Firebase
 
-**Versão:** 0.4.0
-**Status:** Draft — questões em aberto respondidas (ver `OPEN-QUESTIONS.md`); modelo de dados atualizado para atividade reutilizável (ADR-012)
-**Baseado em:** [`SDD.md`](./SDD.md) v0.3.0
+**Versão:** 0.4.1
+**Status:** Draft — questões em aberto respondidas (ver `OPEN-QUESTIONS.md`); modelo de dados atualizado para atividade reutilizável (ADR-012) e imutável em uso (ADR-014)
+**Baseado em:** [`SDD.md`](./SDD.md) v0.3.1
 **Objetivo deste documento:** traduzir o SDD original (que sugeria Next.js + FastAPI + PostgreSQL) para uma arquitetura 100% Firebase, e organizar a implementação em fases sequenciais e testáveis.
 
 ---
@@ -22,6 +22,8 @@ Essas mudanças **substituem** as decisões implícitas em ADR-002, ADR-003, ADR
 > **Atualização 0.3.0 — landing page e LGPD:** o MVP passa a incluir (a) uma landing page pública para divulgação (ADR-010) e (b) conformidade com a LGPD desde o desenvolvimento, com tratamento diferenciado de dados de alunos menores de idade (ADR-011). Impacto nas fases: a região dos projetos Firebase é fixada em `southamerica-east1` na Fase 0 (decisão irreversível); a Fase 1 ganha age gate e registro de consentimento; a Fase 6 ganha exportação/exclusão de dados e banner de cookies; a Fase 7 ganha o RIPD como bloqueio de go-live. Detalhes no ADR-011 e nos artefatos de `docs/lgpd/`.
 
 > **Atualização 0.4.0 — questões em aberto respondidas:** as decisões estão registradas em `OPEN-QUESTIONS.md`. As de maior impacto: (a) **atividade é reutilizável em várias salas** — deixa de ser subcoleção da sala e vira um repositório do professor (`activities/{activityId}`) com atribuição por sala (`assignments`), ver ADR-012; (b) **resultados (nota e gabarito) não são exibidos ao aluno até a liberação** (ação do professor, prazo ou encerramento), ver ADR-013; (c) **sem portal admin no MVP**, mas com um guia de onboarding/suporte manual — `docs/operations/onboarding-mvp.md`. As seções 3, 4, 6 e 9 abaixo já refletem essas decisões.
+
+> **Atualização 0.4.1 — atividade imutável em uso (ADR-014):** uma atividade do repositório fica `LOCKED` (imutável, não atribuível a novas salas) assim que o primeiro aluno inicia uma tentativa em qualquer sala. Para corrigir, o professor **clona** a atividade e, nas salas onde ninguém começou (`assignment.startedCount == 0`), pode substituir a atribuição pela versão clonada. `createAttempt` passa a marcar o lock; novas funções `cloneActivity` e `swapAssignmentActivity` na Fase 3.
 
 ---
 
@@ -133,11 +135,16 @@ classes/{classId}/enrollments/{studentId}
 
 activities/{activityId}
   accountId, title, description, type, difficulty, tags[],
-  status (DRAFT | READY | ARCHIVED), createdAt, updatedAt
+  status (DRAFT | READY | LOCKED | ARCHIVED),
+  locked, lockedAt, clonedFrom,
+  createdAt, updatedAt
   # repositório de atividades do professor — coleção top-level, NÃO
   # subcoleção da sala (ver ADR-012). É o "conteúdo" da atividade,
   # independente de qualquer turma. `status` aqui é de autoria
   # (rascunho / pronta / arquivada), não de publicação numa sala.
+  # LOCKED = já iniciada por algum aluno em alguma sala: imutável e
+  # não atribuível a novas salas; corrigir só clonando (ADR-014).
+  # clonedFrom aponta para a atividade de origem, quando é um clone.
 
 activities/{activityId}/items/{itemId}
   position, prompt, configuration, points
@@ -146,13 +153,16 @@ classes/{classId}/assignments/{assignmentId}
   activityId, activityTitle, type, contentSnapshot,
   status (PUBLISHED | CLOSED), position, publishedAt, dueDate,
   allowRetry, maxAttempts,
+  startedCount, firstStartedAt,
   resultsPolicy (ON_TEACHER_RELEASE | ON_DUE_DATE | ON_CLOSE),
   resultsReleased, resultsReleasedAt,
   createdAt, updatedAt
   # atribuição de uma atividade a uma sala (ver ADR-012). `contentSnapshot`
   # congela os itens no momento da publicação MAS SÓ A PARTE VISÍVEL AO
-  # ALUNO (enunciados, opções) — nunca o gabarito. O professor pode editar
-  # a atividade no repositório sem afetar as salas já atendidas.
+  # ALUNO (enunciados, opções) — nunca o gabarito.
+  # startedCount é incrementado por createAttempt; enquanto == 0 o
+  # professor pode trocar a atividade deste assignment (swapAssignmentActivity,
+  # ADR-014). A partir de 1, o contentSnapshot deste assignment é definitivo.
   # resultsReleased controla a exibição de nota/gabarito ao aluno (ADR-013).
 
 assignmentKeys/{assignmentId}
@@ -194,6 +204,7 @@ classes/{classId}/resultsSummary/{studentId}
 
 - **Atividade reutilizável em várias salas:** resolvido — `Activity` é coleção top-level (`activities/{activityId}`, repositório do professor) e a aplicação numa turma é `classes/{classId}/assignments/{assignmentId}`, com snapshot de conteúdo. Ver **ADR-012**. Isso deixou de ser bloqueio da Fase 3.
 - **Liberação de resultados:** resolvido — nota e gabarito só aparecem ao aluno após liberação (`resultsReleased` no assignment). Ver **ADR-013**.
+- **Atividade imutável em uso:** resolvido — a atividade fica `LOCKED` na primeira tentativa de qualquer aluno em qualquer sala; correção só por clone + substituição nas salas sem tentativas iniciadas. Ver **ADR-014**.
 - **Atividades sem peso no MVP:** confirmado — sem campo `weight`; `resultsSummary` usa soma simples de `score`/`maxScore`.
 - **Nota:** confirmado — `score` (pontos) e `maxScore` guardados; percentual é derivado na exibição.
 - `teacherId` → `accountId` em `classes` e `activities` (ver ADR-009) — decisão de baixo custo, já incorporada.
@@ -213,15 +224,20 @@ match /classes/{classId} {
 }
 
 match /activities/{activityId} {
-  allow read, write: if resource.data.accountId == request.auth.uid && hasRole('teacher');
+  allow read:   if resource.data.accountId == request.auth.uid && hasRole('teacher');
   allow create: if request.resource.data.accountId == request.auth.uid && hasRole('teacher');
-  // alunos NÃO leem `activities` — leem o `contentSnapshot` do assignment (ADR-012)
+  allow update: if resource.data.accountId == request.auth.uid && hasRole('teacher')
+                && resource.data.locked == false;   // LOCKED é imutável (ADR-014)
+  allow delete: if resource.data.accountId == request.auth.uid && hasRole('teacher');
+  // alunos NÃO leem `activities` — leem o `contentSnapshot` do assignment (ADR-012).
+  // o lock (locked=true) e o startedCount só são escritos pelo Admin SDK em createAttempt.
 }
 
 match /classes/{classId}/assignments/{assignmentId} {
   allow read: if isAccountOwner(classId)
               || (isEnrolledStudent(classId) && resource.data.status == 'PUBLISHED');
-  allow write: if isAccountOwner(classId); // publicar/fechar; releaseResults via callable
+  allow write: if isAccountOwner(classId); // publicar/fechar via client; publishAssignment,
+                                           // swapAssignmentActivity e releaseResults via callable
 }
 
 match /attempts/{attemptId} {
@@ -311,16 +327,17 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 
 ### Fase 3 — Repositório de atividades + Activity Engine + 4 tipos do MVP (5–7 semanas, a maior fase)
 
-- **Repositório de atividades do professor** (`activities/{activityId}` + `items`), máquina de estados de autoria DRAFT → READY → ARCHIVED (ADR-012).
-- **Atribuição por sala:** `publishAssignment` (callable) que valida a configuração (RN-006), congela `contentSnapshot` (enunciado) e `assignmentKeys` (gabarito), e cria `classes/{classId}/assignments/{assignmentId}` — a mesma atividade pode ser atribuída a N salas (RN-012).
+- **Repositório de atividades do professor** (`activities/{activityId}` + `items`), máquina de estados de autoria DRAFT → READY → LOCKED → ARCHIVED (ADR-012 / ADR-014).
+- **Atribuição por sala:** `publishAssignment` (callable) que valida a configuração (RN-006), recusa atividade `LOCKED` (RN-013), congela `contentSnapshot` (enunciado) e `assignmentKeys` (gabarito), e cria `classes/{classId}/assignments/{assignmentId}` — a mesma atividade pode ser atribuída a N salas (RN-012).
+- **Versionamento (ADR-014):** `cloneActivity` (callable) — duplica atividade + itens numa nova `DRAFT` com `clonedFrom`; `swapAssignmentActivity` (callable) — troca a atividade de um assignment com `startedCount == 0`, re-congelando snapshot e chave.
 - Máquina de estados do assignment: PUBLISHED → CLOSED (RF-011).
 - Builder + Renderer para os 4 tipos do MVP: fill-in-blanks, meaning matching, translation/localization, multiple choice (seção 9.1–9.4 do SDD).
 - Handlers `validate` / `toStudentContent` / `score` por tipo nas Cloud Functions.
-- **Critério de saída:** UC-004 e UC-005 completos; professor cria uma atividade de cada tipo no repositório e a atribui a duas salas distintas.
+- **Critério de saída:** UC-004 e UC-005 completos; professor cria uma atividade de cada tipo, atribui a duas salas, clona uma atividade e substitui a atribuição numa sala sem tentativas.
 
 ### Fase 4 — Execução e Avaliação — Attempts (3–4 semanas)
 
-- `createAttempt` (callable) sobre um `assignment`, aplicando RN-005 (só assignment `PUBLISHED`) e RN-007 (`max_attempts` contado por assignment).
+- `createAttempt` (callable) sobre um `assignment`, aplicando RN-005 (só assignment `PUBLISHED`) e RN-007 (`max_attempts` contado por assignment). Numa transação: cria o attempt, incrementa `assignment.startedCount` (grava `firstStartedAt` na primeira) e marca `activities/{activityId}.locked = true` / `status = LOCKED` (RN-013, ADR-014).
 - Salvar progresso: escrita direta e incremental do client em `attempts/{id}` enquanto `status == IN_PROGRESS`, protegida por regra que impede editar após submissão.
 - `submitAttempt` (callable) → lê `assignmentKeys` via Admin SDK, calcula `score` e `answers` server-side (RN-008), grava com `status = GRADED`. **Não retorna nota nem gabarito ao aluno se `resultsReleased == false`** (ADR-013, RN-011).
 - `releaseAssignmentResults` (callable) para o professor liberar; Cloud Function agendada para a política `ON_DUE_DATE`.
@@ -404,7 +421,8 @@ elp/
 │   └── src/
 │       ├── auth/             # onUserCreate, custom claims, recordConsent
 │       ├── classes/          # createClass, joinClassByCode
-│       ├── activities/       # publishAssignment, releaseAssignmentResults, activity-types/*
+│       ├── activities/       # publishAssignment, cloneActivity, swapAssignmentActivity,
+│       │                     #   releaseAssignmentResults, activity-types/*
 │       ├── attempts/         # createAttempt, submitAttempt, evaluate
 │       └── privacy/          # exportUserData, deleteUserData, purgeExpiredData (ADR-011)
 ├── firestore.rules
@@ -422,7 +440,8 @@ elp/
 │       ├── 0010-landing-page-e-site-institucional.md
 │       ├── 0011-conformidade-com-a-lgpd.md
 │       ├── 0012-atividade-reutilizavel-e-atribuicao-por-sala.md
-│       └── 0013-liberacao-controlada-de-resultados.md
+│       ├── 0013-liberacao-controlada-de-resultados.md
+│       └── 0014-imutabilidade-e-versionamento-de-atividades-em-uso.md
 └── .github/workflows/
     ├── ci.yml
     └── deploy.yml
@@ -436,6 +455,7 @@ elp/
 
 - **Bloqueio resolvido:** as "Questões em Aberto" do SDD foram respondidas (ver `docs/OPEN-QUESTIONS.md`). As decisões de maior impacto — atividade reutilizável em várias salas (ADR-012) e liberação controlada de resultados (ADR-013) — já estão refletidas nas seções 3 a 6.
 - **Risco de conteúdo duplicado:** o `contentSnapshot` por assignment (ADR-012) multiplica o armazenamento do enunciado pelo número de salas. Aceitável na escala do MVP; se pesar, mover para subcoleção `assignments/{id}/items`.
+- **Risco de UX — várias versões da mesma atividade:** o fluxo de clone (ADR-014) pode deixar o professor com `v1` LOCKED, `v2`, `v3`… Mitigar com a linhagem `clonedFrom` visível na UI e um aviso claro, antes da primeira tentativa, de que a atividade vai travar.
 - **Risco técnico:** Firestore não tem transações que abranjam mais que 500 documentos nem full-text search nativo — relevante já a partir da Fase 3 (banco de vocabulário/textos, Fase 3 do roadmap).
 - **Risco de custo:** Cloud Functions com muitas invocações (ex.: salvar progresso a cada resposta) pode gerar custo relevante em escala — mitigar com debounce no client antes de escrever, e mover para escrita direta protegida por regra (já contemplado na Fase 4).
 - **Risco de produto:** construir o portal admin (Fase 8) cedo demais, antes de haver professores pagantes reais, tende a ser esforço mal direcionado — o ADR-009 resolve o essencial (nomenclatura de dados) a custo baixo agora exatamente para permitir adiar a Fase 8 sem custo de migração depois.

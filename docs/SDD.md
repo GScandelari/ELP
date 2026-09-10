@@ -1,6 +1,6 @@
 # SDD — English Learning Classroom
 
-**Versão:** 0.3.0  
+**Versão:** 0.3.1  
 **Status:** Draft / Baseline para descoberta e modelagem  
 **Tipo:** Software Design Document (SDD)  
 **Objetivo:** Especificar uma plataforma web de apoio ao ensino de inglês, com foco em leitura, escrita, vocabulário, significado, tradução/localização e avaliação.
@@ -8,6 +8,8 @@
 **Atualização 0.2.0:** incorporadas duas frentes transversais — (a) landing page pública para divulgação da plataforma (ADR-010) e (b) conformidade com a LGPD desde o desenvolvimento, incluindo o tratamento de dados de alunos menores de idade (Art. 14 — ADR-011). As mudanças estão nas seções 1.3, 2, 3, 4, 15, 19, 22, 25, 29 e 31.
 
 **Atualização 0.3.0:** questões em aberto (seção 29) respondidas — decisões registradas em `docs/OPEN-QUESTIONS.md`. Impacto de modelo: (a) a **atividade é reutilizável em várias salas** — deixa de ser filha de uma sala e passa a ser um repositório do professor, aplicada às turmas via *atribuição* (ADR-012); (b) **nota e gabarito não são exibidos ao aluno até a liberação** dos resultados (ADR-013); (c) **sem administrador com UI no MVP** — onboarding e suporte por procedimento manual documentado (`docs/operations/onboarding-mvp.md`). Seções afetadas: 7, 11, 12, 13, 14, RF-008/010/011/012/017, RN-005/006/007 e novas RN-011/RN-012.
+
+**Atualização 0.3.1:** uma atividade do repositório torna-se **imutável (`LOCKED`) assim que o primeiro aluno a inicia** em qualquer sala; para corrigi-la o professor a **clona** e pode substituir a atribuição nas salas onde ninguém começou (ADR-014). Nova RN-013; ajustes em RF-011, 7.4, 7.4.1 e 12.1; nova RF-022.
 
 ---
 
@@ -328,6 +330,15 @@ No cadastro:
 - aluno maior de 18 anos completa o cadastro com aceite próprio;
 - aluno menor de 18 anos não faz cadastro self-service: a conta é criada/vinculada pelo professor ou escola, que declara ter obtido o consentimento do responsável legal, usando o modelo de termo fornecido pela plataforma (ver ADR-011).
 
+## RF-022 — Corrigir atividade em uso
+
+Quando uma atividade já foi iniciada por algum aluno (estado `LOCKED`, ver RN-013), o professor deve poder:
+
+- **clonar** a atividade, gerando uma nova versão editável no seu repositório;
+- **substituir**, sala a sala, a atividade atribuída pela versão corrigida — apenas nas salas onde nenhum aluno iniciou a atividade;
+
+As salas onde a atividade já foi iniciada mantêm a versão original inalterada.
+
 ---
 
 # 4. Requisitos Não Funcionais
@@ -551,7 +562,10 @@ Activity
 - type
 - difficulty
 - tags
-- status               # DRAFT | READY | ARCHIVED (estado de autoria)
+- status               # DRAFT | READY | LOCKED | ARCHIVED (estado de autoria)
+- locked               # true assim que iniciada por algum aluno (RN-013)
+- locked_at
+- cloned_from           # id da atividade de origem, se for um clone
 - created_at
 - updated_at
 ```
@@ -570,6 +584,8 @@ Assignment
 - due_date
 - allow_retry
 - max_attempts
+- started_count         # nº de tentativas já criadas; enquanto 0, pode trocar a atividade (RF-022)
+- first_started_at
 - results_policy        # ON_TEACHER_RELEASE | ON_DUE_DATE | ON_CLOSE
 - results_released
 - results_released_at
@@ -936,28 +952,35 @@ ActivityItem "1" ---- "0..*" Answer
 ## 12.1 Activity (repositório) e Assignment (atribuição à sala)
 
 ```text
-   Activity (repositório do professor)      Assignment (por sala)
+   Activity (repositório do professor)         Assignment (por sala)
 
-   +--------+                               +-------------+
-   | DRAFT  |  --editar/validar-->          |  PUBLISHED  |
-   +---+----+                               +------+------+
-       |                                           |
-     marcar pronta                            fechar / vencer prazo
-       |                                           |
-       v                                           v
-   +--------+   --atribuir a uma sala-->     +-------------+
-   | READY  | ------------------------------>| CLOSED      |
-   +---+----+   (cria um Assignment;         +-------------+
-       |         a Activity segue READY)
+   +--------+                                  +-------------+
+   | DRAFT  | --editar/validar-->              |  PUBLISHED  |
+   +---+----+                                  +------+------+
+       |                                              |
+     marcar pronta                             fechar / vencer prazo
+       |                                              |
+       v          --atribuir a uma sala-->            v
+   +--------+ ------------------------------->  +-------------+
+   | READY  |    (cria um Assignment;          | CLOSED      |
+   +---+----+     editável enquanto             +-------------+
+       |          nenhum aluno iniciar)
+       |
+       | 1º aluno inicia uma tentativa (RN-013)
+       v
+   +--------+   clonar --> nova Activity DRAFT (RF-022)
+   | LOCKED |   (imutável; não vai para novas salas)
+   +---+----+
+       |
    arquivar
        |
        v
    +----------+
-   | ARCHIVED |
+   | ARCHIVED |   (a partir de READY ou LOCKED)
    +----------+
 ```
 
-Uma mesma `Activity` `READY` pode gerar vários `Assignment` (um por sala). Ver ADR-012.
+Uma mesma `Activity` `READY` pode gerar vários `Assignment` (um por sala). Ver ADR-012 e ADR-014.
 
 ## 12.2 Attempt
 
@@ -1089,8 +1112,9 @@ GET    /api/v1/classes/{classId}/students
 GET    /api/v1/activities                      # repositório do professor autenticado
 POST   /api/v1/activities
 GET    /api/v1/activities/{activityId}
-PATCH  /api/v1/activities/{activityId}          # só enquanto DRAFT
+PATCH  /api/v1/activities/{activityId}          # recusa se LOCKED (RN-013)
 DELETE /api/v1/activities/{activityId}
+POST   /api/v1/activities/{activityId}/clone    # nova versão editável (RF-022)
 ```
 
 ## Assignments (atribuição a salas)
@@ -1102,6 +1126,7 @@ GET    /api/v1/classes/{classId}/assignments/{assignmentId}
 PATCH  /api/v1/classes/{classId}/assignments/{assignmentId}
 POST   /api/v1/classes/{classId}/assignments/{assignmentId}/close
 POST   /api/v1/classes/{classId}/assignments/{assignmentId}/release-results
+PUT    /api/v1/classes/{classId}/assignments/{assignmentId}/activity   # trocar pela versão clonada; recusa se started_count > 0 (RF-022)
 ```
 
 ## Attempts
@@ -1138,8 +1163,10 @@ CREATE_CLASS
 UPDATE_OWN_CLASS
 MANAGE_ENROLLMENTS
 CREATE_ACTIVITY            # no próprio repositório
-UPDATE_OWN_ACTIVITY
+UPDATE_OWN_ACTIVITY       # só se não LOCKED
+CLONE_OWN_ACTIVITY
 ASSIGN_ACTIVITY_TO_CLASS   # criar Assignment
+SWAP_ASSIGNMENT_ACTIVITY   # só se started_count == 0
 RELEASE_ASSIGNMENT_RESULTS
 VIEW_CLASS_RESULTS
 ```
@@ -1216,6 +1243,10 @@ Nota, gabarito e correção por item só são exibidos ao aluno após a **libera
 ## RN-012
 
 Uma atividade do repositório do professor pode ser atribuída a várias salas. O conteúdo é congelado no momento da atribuição — editar a atividade no repositório depois não altera as salas já atendidas. Ver ADR-012.
+
+## RN-013
+
+Uma atividade torna-se imutável (`LOCKED`) assim que a primeira tentativa é criada em qualquer sala. Uma atividade `LOCKED` não pode ser editada nem atribuída a novas salas. A correção é feita clonando a atividade (RF-022); a versão clonada pode substituir a atribuição apenas nas salas onde `startedCount == 0`. Ver ADR-014.
 
 ---
 
@@ -1461,6 +1492,8 @@ Principalmente:
 - [ ] Professor consegue salvar rascunho e marcar como pronta.
 - [ ] Professor consegue atribuir a mesma atividade a mais de uma sala.
 - [ ] Editar a atividade no repositório não altera as salas já atendidas.
+- [ ] Após o primeiro aluno iniciar, a atividade fica bloqueada para edição e para novas salas.
+- [ ] Professor consegue clonar a atividade bloqueada e substituí-la nas salas sem tentativas iniciadas.
 - [ ] Aluno consegue visualizar a atividade atribuída à sua sala.
 
 ## Execução
@@ -1611,9 +1644,10 @@ ADR-011 — Landing page e site institucional
 ADR-012 — Conformidade com a LGPD
 ADR-013 — Atividade reutilizável (repositório + atribuição por sala)
 ADR-014 — Liberação controlada de resultados
+ADR-015 — Imutabilidade e versionamento de atividades em uso
 ```
 
-> Nota: os ADRs formais foram escritos e renumerados em `docs/adr/` ao adotar Firebase (ver `docs/adr/0001` em diante). O mapeamento não é 1:1 com a lista acima: landing page → `docs/adr/0010`, LGPD → `docs/adr/0011`, atividade reutilizável → `docs/adr/0012`, liberação de resultados → `docs/adr/0013`.
+> Nota: os ADRs formais foram escritos e renumerados em `docs/adr/` ao adotar Firebase (ver `docs/adr/0001` em diante). O mapeamento não é 1:1 com a lista acima: landing page → `docs/adr/0010`, LGPD → `docs/adr/0011`, atividade reutilizável → `docs/adr/0012`, liberação de resultados → `docs/adr/0013`, imutabilidade de atividades em uso → `docs/adr/0014`.
 
 ---
 
