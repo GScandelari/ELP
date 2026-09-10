@@ -70,7 +70,7 @@ mostrar *"Emulador de Auth (127.0.0.1:9099): conectado ✓"*, e
 ```
 apps/web/
   app/(marketing)/     landing + páginas legais (ADR-010)
-  content/*.mdx         textos institucionais/legais
+  content/*.md          textos institucionais/legais (renderizados com marked)
   components/, lib/
 functions/src/          Cloud Functions (só `ping` no momento)
 firestore.rules         Security Rules (ADR-005/012/013/014)

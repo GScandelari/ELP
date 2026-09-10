@@ -16,7 +16,7 @@ O SDD trata apenas dos portais autenticados (Professor e Aluno). Para divulgar a
   - `/privacidade` — Política de Privacidade (ver ADR-011);
   - `/termos` — Termos de Uso;
   - `/cookies` — Política de Cookies.
-- Conteúdo institucional e legal em Markdown/MDX versionado no repositório (`apps/web/content/`), **não** em CMS — toda alteração de texto legal passa por Pull Request e revisão.
+- Conteúdo institucional e legal em Markdown versionado no repositório (`apps/web/content/`, renderizado no servidor com `marked`), **não** em CMS — toda alteração de texto legal passa por Pull Request e revisão.
 - SEO básico: `metadata`, `sitemap.xml`, `robots.txt`, Open Graph. **Sem** tag de analytics ou marketing no MVP (ver ADR-011 — apenas cookies essenciais).
 - Mesmo design system acessível dos portais (RNF-007).
 - Rotas públicas explicitamente liberadas no middleware de autenticação — um visitante anônimo em `/` nunca é redirecionado para login.
