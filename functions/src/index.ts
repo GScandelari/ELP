@@ -1,30 +1,18 @@
 import { initializeApp } from "firebase-admin/app";
 import { setGlobalOptions } from "firebase-functions/v2";
-import { onRequest } from "firebase-functions/v2/https";
 
 initializeApp();
-
 setGlobalOptions({ region: "southamerica-east1", maxInstances: 10 });
 
-/**
- * Health check — usado no critério de saída da Fase 0.
- * Emulador: GET http://127.0.0.1:5001/<project>/southamerica-east1/ping
- */
-export const ping = onRequest((_req, res) => {
-  res.json({
-    status: "ok",
-    service: "elp-functions",
-    time: new Date().toISOString(),
-  });
-});
+export { ping } from "./health";
+export { finalizeSignup } from "./auth/finalize-signup";
 
 /*
  * -------------------------------------------------------------------------
  * Funções planejadas (docs/IMPLEMENTATION-PLAN.md seção 6). A implementar:
  *
  * auth/
- *   onUserCreate             espelha `role` como custom claim, cria users/{uid}
- *   recordConsent            grava consents/{uid} no aceite (RF-019)
+ *   recordConsent            (embutido em finalizeSignup por enquanto)
  * classes/
  *   createClass              código único via transação (RN-001)
  *   joinClassByCode          valida sala ativa / não-duplicidade (RN-002, RN-003)

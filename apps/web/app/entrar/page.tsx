@@ -93,7 +93,9 @@ export default function EntrarPage() {
 
         <p className="mt-4 text-sm text-muted-foreground">
           Ainda não tem conta?{" "}
-          <span className="opacity-60">cadastro em breve (PR 1.2)</span>
+          <Link href="/cadastro" className="underline">
+            Criar conta de professor
+          </Link>
         </p>
       </div>
     </div>
