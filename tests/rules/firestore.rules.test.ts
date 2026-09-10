@@ -32,7 +32,7 @@ afterAll(async () => {
   await testEnv.cleanup();
 });
 
-describe("firestore.rules — smoke (ADR-005/012/013)", () => {
+describe("firestore.rules — smoke (ADR-005/011/012/013)", () => {
   it("nega leitura de activities para não autenticado", async () => {
     const db = testEnv.unauthenticatedContext().firestore();
     await assertFails(getDoc(doc(db, "activities/a1")));
@@ -45,21 +45,36 @@ describe("firestore.rules — smoke (ADR-005/012/013)", () => {
     await assertFails(getDoc(doc(teacher, "assignmentKeys/k1")));
   });
 
-  it("permite ao usuário criar o próprio documento users/{uid}", async () => {
+  it("nega ao cliente criar users/{uid} diretamente (só via Cloud Function)", async () => {
     const u = testEnv.authenticatedContext("u1").firestore();
-    await assertSucceeds(
+    await assertFails(
       setDoc(doc(u, "users/u1"), {
         name: "U",
         email: "u@example.com",
-        role: "student",
+        role: "teacher",
       }),
     );
   });
 
-  it("nega a um usuário criar o documento users de outra pessoa", async () => {
+  it("permite ao usuário ler o próprio users/{uid} e nega o de outro", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "users/u1"), { name: "U", role: "teacher" });
+      await setDoc(doc(ctx.firestore(), "users/u2"), { name: "V", role: "student" });
+    });
+    const u1 = testEnv.authenticatedContext("u1").firestore();
+    await assertSucceeds(getDoc(doc(u1, "users/u1")));
+    await assertFails(getDoc(doc(u1, "users/u2")));
+  });
+
+  it("nega ao cliente escrever em consents/{uid}/records", async () => {
     const u = testEnv.authenticatedContext("u1").firestore();
     await assertFails(
-      setDoc(doc(u, "users/u2"), { name: "X", email: "x@example.com" }),
+      setDoc(doc(u, "consents/u1/records/r1"), { type: "TERMS" }),
     );
+  });
+
+  it("nega ao cliente escrever em accounts/{id}", async () => {
+    const u = testEnv.authenticatedContext("u1", { role: "teacher" }).firestore();
+    await assertFails(setDoc(doc(u, "accounts/u1"), { status: "ACTIVE" }));
   });
 });

@@ -15,18 +15,15 @@ export default function HomePage() {
       </p>
 
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link href="/entrar" className={buttonClassName({ size: "lg" })}>
+        <Link href="/cadastro" className={buttonClassName({ size: "lg" })}>
+          Criar conta de professor
+        </Link>
+        <Link
+          href="/entrar"
+          className={buttonClassName({ size: "lg", variant: "outline" })}
+        >
           Entrar
         </Link>
-        <span
-          className={buttonClassName({
-            size: "lg",
-            variant: "outline",
-            className: "pointer-events-none opacity-50",
-          })}
-        >
-          Criar conta (em breve)
-        </span>
       </div>
 
       <p className="mt-6 text-sm text-muted-foreground">

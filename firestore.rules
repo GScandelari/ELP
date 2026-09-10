@@ -42,9 +42,7 @@ service cloud.firestore {
     // ---- users ----
     match /users/{uid} {
       allow read: if isSelf(uid) || hasRole('admin');
-      allow create: if isSelf(uid);
-      allow update: if isSelf(uid) || hasRole('admin');
-      allow delete: if false; // deleteUserData (Cloud Function)
+      allow write: if false; // finalizeSignup / updateProfile / deleteUserData (Cloud Functions)
     }
 
     // ---- accounts (ADR-009) ----

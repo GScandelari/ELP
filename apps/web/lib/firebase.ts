@@ -7,6 +7,13 @@ import {
   getFirestore,
   type Firestore,
 } from "firebase/firestore";
+import {
+  connectFunctionsEmulator,
+  getFunctions,
+  type Functions,
+} from "firebase/functions";
+
+const REGION = "southamerica-east1";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -19,7 +26,12 @@ const firebaseConfig = {
 
 const useEmulators = process.env.NEXT_PUBLIC_USE_EMULATORS === "true";
 
-let cached: { app: FirebaseApp; auth: Auth; db: Firestore } | null = null;
+let cached: {
+  app: FirebaseApp;
+  auth: Auth;
+  db: Firestore;
+  functions: Functions;
+} | null = null;
 
 /**
  * Inicializa o SDK do Firebase. **Só pode ser chamada no client** — o SDK
@@ -34,12 +46,14 @@ export function getFirebase() {
   const app = getApps()[0] ?? initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  const functions = getFunctions(app, REGION);
 
   if (useEmulators) {
     connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
     connectFirestoreEmulator(db, "127.0.0.1", 8080);
+    connectFunctionsEmulator(functions, "127.0.0.1", 5001);
   }
 
-  cached = { app, auth, db };
+  cached = { app, auth, db, functions };
   return cached;
 }
