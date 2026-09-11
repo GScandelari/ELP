@@ -1,38 +1,26 @@
-import { initializeApp } from "firebase-admin/app";
-import { getFirestore, type Firestore } from "firebase-admin/firestore";
-import functionsTest from "firebase-functions-test";
+import type { Firestore } from "firebase-admin/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { joinClassByCode } from "../src/classes/join-class-by-code";
+import {
+  clearFirestoreEmulator,
+  cleanupTestApp,
+  initTestApp,
+  wrapCallable,
+} from "./helpers";
 
-const PROJECT_ID = "demo-elp";
-const fft = functionsTest();
+type JoinClassResult = { classId: string; className: string };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let wrapped: any;
 let db: Firestore;
+let call: ReturnType<typeof wrapCallable<{ code?: unknown }, JoinClassResult>>;
 
 beforeAll(() => {
-  initializeApp({ projectId: PROJECT_ID });
-  db = getFirestore();
-  wrapped = fft.wrap(joinClassByCode);
+  db = initTestApp();
+  call = wrapCallable(joinClassByCode);
 });
 
-afterAll(() => fft.cleanup());
+afterAll(() => cleanupTestApp());
 
-beforeEach(async () => {
-  const host = process.env.FIRESTORE_EMULATOR_HOST;
-  await fetch(
-    `http://${host}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`,
-    { method: "DELETE" },
-  );
-});
-
-function call(
-  data: unknown,
-  auth?: { uid: string; token?: Record<string, unknown> },
-) {
-  return wrapped({ data, auth });
-}
+beforeEach(() => clearFirestoreEmulator());
 
 const studentAuth = { uid: "aluno-1", token: { role: "student" } };
 const CODE = "BCDFGH";

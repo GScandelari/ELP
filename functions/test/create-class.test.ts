@@ -1,37 +1,32 @@
-import { initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
-import functionsTest from "firebase-functions-test";
+import type { Firestore } from "firebase-admin/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { isValidCode } from "../src/classes/enrollment-code";
 import { createClass } from "../src/classes/create-class";
+import {
+  clearFirestoreEmulator,
+  cleanupTestApp,
+  initTestApp,
+  wrapCallable,
+} from "./helpers";
 
-const PROJECT_ID = "demo-elp";
-const fft = functionsTest();
+type CreateClassResult = { classId: string; enrollmentCode: string };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let wrapped: any;
+let db: Firestore;
+let call: ReturnType<
+  typeof wrapCallable<
+    { name?: unknown; description?: unknown },
+    CreateClassResult
+  >
+>;
 
 beforeAll(() => {
-  initializeApp({ projectId: PROJECT_ID });
-  wrapped = fft.wrap(createClass);
+  db = initTestApp();
+  call = wrapCallable(createClass);
 });
 
-afterAll(() => fft.cleanup());
+afterAll(() => cleanupTestApp());
 
-beforeEach(async () => {
-  const host = process.env.FIRESTORE_EMULATOR_HOST;
-  await fetch(
-    `http://${host}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`,
-    { method: "DELETE" },
-  );
-});
-
-function call(
-  data: unknown,
-  auth?: { uid: string; token?: Record<string, unknown> },
-) {
-  return wrapped({ data, auth });
-}
+beforeEach(() => clearFirestoreEmulator());
 
 const teacherAuth = { uid: "prof-1", token: { role: "teacher" } };
 
@@ -69,7 +64,6 @@ describe("createClass (integração)", () => {
     expect(res.classId).toBeTruthy();
     expect(isValidCode(res.enrollmentCode)).toBe(true);
 
-    const db = getFirestore();
     const cls = await db.doc(`classes/${res.classId}`).get();
     expect(cls.exists).toBe(true);
     expect(cls.data()).toMatchObject({
