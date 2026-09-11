@@ -4,6 +4,7 @@ import { FirebaseError } from "firebase/app";
 import { httpsCallable } from "firebase/functions";
 import {
   collection,
+  collectionGroup,
   doc,
   getDoc,
   onSnapshot,
@@ -111,4 +112,83 @@ export function createClassErrorMessage(err: unknown): string {
     }
   }
   return "Não foi possível criar a sala. Tente novamente.";
+}
+
+export type MyClassSummary = {
+  classId: string;
+  name: string;
+  description: string;
+  status: ClassStatus;
+  enrollmentType: "SELF_ENROLLMENT" | "TEACHER_ASSIGNED";
+};
+
+export type JoinClassResult = { classId: string; className: string };
+
+/** Aluno entra numa sala pelo código, via callable `joinClassByCode` (RF-006, UC-003). */
+export async function joinClassByCode(code: string): Promise<JoinClassResult> {
+  const { functions } = getFirebase();
+  const fn = httpsCallable<{ code: string }, JoinClassResult>(
+    functions,
+    "joinClassByCode",
+  );
+  const res = await fn({ code });
+  return res.data;
+}
+
+/**
+ * Observa as salas em que o aluno está inscrito (collection group,
+ * `where('studentId','==', uid)`) e resolve o nome/descrição/status de
+ * cada uma. A regra de `list` só prova pelo filtro em `studentId` — ver
+ * docs/plano-fase-2.md §8.1 — por isso a query nunca pode omitir esse
+ * `where`.
+ */
+export function watchMyClasses(
+  uid: string,
+  onChange: (classes: MyClassSummary[]) => void,
+): Unsubscribe {
+  const { db } = getFirebase();
+  const q = query(
+    collectionGroup(db, "enrollments"),
+    where("studentId", "==", uid),
+    where("status", "==", "ACTIVE"),
+  );
+  return onSnapshot(
+    q,
+    async (snap) => {
+      const items = await Promise.all(
+        snap.docs.map(async (enrollmentDoc) => {
+          const classRef = enrollmentDoc.ref.parent.parent;
+          const classSnap = classRef ? await getDoc(classRef) : null;
+          const classData = classSnap?.data();
+          return {
+            classId: classRef?.id ?? "",
+            name: classData?.name ?? "",
+            description: classData?.description ?? "",
+            status: (classData?.status as ClassStatus) ?? "ACTIVE",
+            enrollmentType: enrollmentDoc.data().enrollmentType,
+          } satisfies MyClassSummary;
+        }),
+      );
+      onChange(items);
+    },
+    () => onChange([]),
+  );
+}
+
+export function joinClassErrorMessage(err: unknown): string {
+  if (err instanceof FirebaseError) {
+    switch (err.code) {
+      case "functions/not-found":
+        return "Código não encontrado. Confira com o professor.";
+      case "functions/failed-precondition":
+        return err.message || "Não foi possível entrar nesta sala.";
+      case "functions/already-exists":
+        return "Você já está nesta sala.";
+      case "functions/permission-denied":
+        return "Apenas alunos podem entrar em uma sala por código.";
+      default:
+        return "Não foi possível entrar na sala. Tente novamente.";
+    }
+  }
+  return "Não foi possível entrar na sala. Tente novamente.";
 }

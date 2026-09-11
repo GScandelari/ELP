@@ -25,3 +25,15 @@ export async function registerTeacher(page: Page, email: string) {
   await page.getByRole("checkbox").nth(1).check();
   await page.getByRole("button", { name: "Criar conta" }).click();
 }
+
+export async function registerStudent(page: Page, email: string) {
+  await page.goto("/cadastro");
+  await page.getByRole("button", { name: "Aluno" }).click();
+  await page.getByRole("button", { name: "Sim" }).click();
+  await page.getByLabel("Nome completo").fill("Aluno E2E");
+  await page.getByLabel("E-mail").fill(email);
+  await page.getByLabel(/Senha/).fill("senha123456");
+  await page.getByRole("checkbox").first().check();
+  await page.getByRole("checkbox").nth(1).check();
+  await page.getByRole("button", { name: "Criar conta" }).click();
+}
