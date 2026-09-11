@@ -15,15 +15,19 @@ import {
   where,
 } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { contextFactory, createRulesTestEnv } from "./helpers";
+import {
+  contextFactory,
+  createRulesTestEnv,
+  OTHER_STUDENT,
+  OTHER_TEACHER,
+  standardActors,
+  STUDENT,
+  TEACHER,
+} from "./helpers";
 
 let testEnv: RulesTestEnvironment;
 let db: ReturnType<typeof contextFactory>;
 
-const TEACHER = "teacher-1";
-const OTHER_TEACHER = "teacher-2";
-const STUDENT = "student-1";
-const OTHER_STUDENT = "student-2";
 const CLASS_ID = "class-1";
 const ACTIVITY_ID = "activity-1"; // locked: false
 const LOCKED_ACTIVITY_ID = "activity-2"; // locked: true
@@ -145,10 +149,12 @@ afterAll(async () => {
   await testEnv.cleanup();
 });
 
-const teacher = () => db(TEACHER, { role: "teacher" });
-const otherTeacher = () => db(OTHER_TEACHER, { role: "teacher" });
-const student = () => db(STUDENT, { role: "student" });
-const otherStudent = () => db(OTHER_STUDENT, { role: "student" });
+// wrapper porque `db` só é atribuída dentro do beforeAll (acima) — os
+// helpers de standardActors precisam ler o valor atual, não o de quando
+// o módulo carregou.
+const { teacher, otherTeacher, student, otherStudent } = standardActors(
+  (uid, claims) => db(uid, claims),
+);
 
 describe("firestore.rules — activities (Fase 3)", () => {
   it("1. professor lê/lista a própria atividade", async () => {

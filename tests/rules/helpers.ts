@@ -30,3 +30,21 @@ export function contextFactory(testEnv: RulesTestEnvironment) {
       : testEnv.unauthenticatedContext().firestore();
   };
 }
+
+// UIDs padrão reaproveitados pelos testes de rules — um professor "dono",
+// um segundo professor (tenta acessar o que não é dele), um aluno
+// inscrito e um aluno de fora.
+export const TEACHER = "teacher-1";
+export const OTHER_TEACHER = "teacher-2";
+export const STUDENT = "student-1";
+export const OTHER_STUDENT = "student-2";
+
+/** Os 4 papéis padrão, já como contexto Firestore pronto pra usar. */
+export function standardActors(db: ReturnType<typeof contextFactory>) {
+  return {
+    teacher: () => db(TEACHER, { role: "teacher" }),
+    otherTeacher: () => db(OTHER_TEACHER, { role: "teacher" }),
+    student: () => db(STUDENT, { role: "student" }),
+    otherStudent: () => db(OTHER_STUDENT, { role: "student" }),
+  };
+}
