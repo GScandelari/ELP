@@ -7,8 +7,18 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
-import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 let testEnv: RulesTestEnvironment;
@@ -41,6 +51,7 @@ beforeEach(async () => {
       enrollmentCode: "BCD234",
       status: "ACTIVE",
       studentCount: 1,
+      createdAt: new Date(),
     });
     await setDoc(doc(db, `classes/${CLASS_ID}/enrollments/${STUDENT}`), {
       studentId: STUDENT,
@@ -76,6 +87,28 @@ describe("firestore.rules — classes (Fase 2 / RN-004)", () => {
 
   it("2. outro professor não lê a sala", async () => {
     await assertFails(getDoc(doc(otherTeacher(), `classes/${CLASS_ID}`)));
+  });
+
+  it("2b. professor lista (list) as próprias salas por accountId", async () => {
+    // regressão: a regra usava get() em vez de resource.data, o que falhava
+    // com "Null value error" numa query de list (ver PR 2.2)
+    const q = query(
+      collection(teacher(), "classes"),
+      where("accountId", "==", TEACHER),
+      orderBy("createdAt", "desc"),
+    );
+    const snap = await assertSucceeds(getDocs(q));
+    expect(snap.size).toBe(1);
+  });
+
+  it("2c. outro professor lista as próprias salas e não vê a de teacher-1", async () => {
+    const q = query(
+      collection(otherTeacher(), "classes"),
+      where("accountId", "==", OTHER_TEACHER),
+      orderBy("createdAt", "desc"),
+    );
+    const snap = await assertSucceeds(getDocs(q));
+    expect(snap.size).toBe(0);
   });
 
   it("3. aluno inscrito lê a sala", async () => {
