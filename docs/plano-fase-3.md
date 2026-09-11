@@ -286,12 +286,12 @@ Como `createAttempt` só existe na Fase 4, **nada nesta fase incrementa `started
 
 ---
 
-## 8. Decisões a confirmar
+## 8. Decisões — confirmadas
 
-1. **Renderer nesta fase = só leitura** (preview do professor + visualização do aluno, sem captura de resposta) — a versão interativa entra na Fase 4 junto do backend que a recebe (§1.1).
-2. **Ordem dos 4 tipos:** `MULTIPLE_CHOICE` → `FILL_IN_BLANKS` → `TRANSLATION` → `MEANING_MATCHING`, do mais simples (valida o Engine de ponta a ponta rápido) pro mais complexo (drag-and-drop).
-3. **Drag-and-drop do `MEANING_MATCHING`:** usar `@dnd-kit/core` (ADR-007) já nesta fase, ou entregar só o modo por clique/seleção no MVP e deixar o arrastar visual pra depois? O `configuration` não muda; é só a interação.
-4. **Exclusão de atividade:** sem exclusão física no MVP — só `ARCHIVED` (soft, RF não pede "excluir"). A rule de `delete` existente (sem checar `locked`) é corrigida (§6) mas a UI não expõe um botão "excluir", só "arquivar".
+1. ✅ **Renderer nesta fase = só leitura** (preview do professor + visualização do aluno, sem captura de resposta) — a versão interativa entra na Fase 4 junto do backend que a recebe (§1.1).
+2. ✅ **Ordem dos 4 tipos:** `MULTIPLE_CHOICE` → `FILL_IN_BLANKS` → `TRANSLATION` → `MEANING_MATCHING`, do mais simples pro mais complexo.
+3. ✅ **Drag-and-drop do `MEANING_MATCHING`:** só o modo por clique/seleção nesta fase; `@dnd-kit/core` (ADR-007) fica pra depois — o `configuration` não muda, é só a interação.
+4. ✅ **Exclusão de atividade:** sem exclusão física no MVP — só `ARCHIVED` (soft). A rule de `delete` existente (sem checar `locked`) é corrigida (§6) mas a UI não expõe um botão "excluir", só "arquivar".
 
 ---
 
