@@ -1,10 +1,6 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { resolve } from "node:path";
 import {
   assertFails,
   assertSucceeds,
-  initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
 import {
@@ -20,9 +16,10 @@ import {
   where,
 } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { contextFactory, createRulesTestEnv } from "./helpers";
 
-const here = fileURLToPath(new URL(".", import.meta.url));
 let testEnv: RulesTestEnvironment;
+let db: ReturnType<typeof contextFactory>;
 
 const TEACHER = "teacher-1";
 const OTHER_TEACHER = "teacher-2";
@@ -31,14 +28,8 @@ const OTHER_STUDENT = "student-2";
 const CLASS_ID = "class-1";
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: "demo-elp-classes-rules",
-    firestore: {
-      rules: readFileSync(resolve(here, "../../firestore.rules"), "utf8"),
-      host: "127.0.0.1",
-      port: 8080,
-    },
-  });
+  testEnv = await createRulesTestEnv("demo-elp-classes-rules");
+  db = contextFactory(testEnv);
 });
 
 beforeEach(async () => {
@@ -70,12 +61,6 @@ beforeEach(async () => {
 afterAll(async () => {
   await testEnv.cleanup();
 });
-
-function db(uid: string | null, claims: Record<string, unknown> = {}) {
-  return uid
-    ? testEnv.authenticatedContext(uid, claims).firestore()
-    : testEnv.unauthenticatedContext().firestore();
-}
 
 const teacher = () => db(TEACHER, { role: "teacher" });
 const otherTeacher = () => db(OTHER_TEACHER, { role: "teacher" });
