@@ -231,4 +231,15 @@ describe("firestore.rules — classes (Fase 2 / RN-004)", () => {
     );
     await assertFails(getDocs(q));
   });
+
+  it("17. GUARDIAN_CONSENT é imutável para o client (só addStudentToClass grava)", async () => {
+    await assertFails(
+      setDoc(doc(teacher(), `consents/${STUDENT}/records/r1`), {
+        type: "GUARDIAN_CONSENT",
+        grantedByRole: "teacher",
+        grantedByUid: TEACHER,
+        guardianName: "Responsável",
+      }),
+    );
+  });
 });

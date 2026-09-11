@@ -314,12 +314,18 @@ Regra final em `classes/{classId}/enrollments/{studentId}` (via `match /{path=**
 
 ## 9. Checklist de conclusão da fase
 
-- [ ] `createClass`, `joinClassByCode`, `addStudentToClass` implementados e exportados
-- [ ] Rules atualizadas + tabela §4.1 verde
-- [ ] Índices adicionados e deployáveis
-- [ ] Portais de professor e aluno navegáveis
-- [ ] Fluxo de menor com `GUARDIAN_CONSENT` registrado
-- [ ] `e2e/salas.spec.ts` verde no CI
-- [ ] `docs/operations/onboarding-mvp.md` (rascunho)
-- [ ] Fase 2 marcada como ✅ no `IMPLEMENTATION-PLAN.md`
-- [ ] `docs/lgpd/registro-de-tratamento.md` atualizado com a operação "inscrição de aluno menor"
+- [x] `createClass`, `joinClassByCode`, `addStudentToClass` (casos A e B), `removeStudentFromClass` implementados e exportados (PRs 2.1, 2.3, 2.5, 2.6)
+- [x] Rules atualizadas + testes de rules verdes (27/27 depois da PR 2.6)
+- [x] Índices adicionados e deployáveis (`classes`, `enrollments` collection group)
+- [x] Portais de professor e aluno navegáveis (PRs 2.2, 2.4, 2.5)
+- [x] Fluxo de menor com `GUARDIAN_CONSENT` registrado — `addStudentToClass` caso B (PR 2.6); modelo de termo em `apps/web/content/termo-responsavel.md`, rota pública `/termo-responsavel`
+- [x] E2E cobrindo o fluxo (`salas-professor`, `salas-aluno`, `salas-inscricao-manual` — inclui o cenário de menor) verdes no CI
+- [ ] `docs/operations/onboarding-mvp.md` (rascunho) — PR 2.7
+- [ ] Fase 2 marcada como ✅ no `IMPLEMENTATION-PLAN.md` — PR 2.7
+- [x] `docs/lgpd/registro-de-tratamento.md` atualizado (operação 2 já cobria "cadastro/vínculo de aluno"; explicitada a inscrição manual de menor pelo professor)
+
+### 9.1 Decisões de implementação da PR 2.6 (não estavam fechadas no plano original)
+
+- **Entrega do link de definição de senha:** o `AddStudentDialog` mostra o `passwordSetupLink` numa tela de sucesso com botão "Copiar link" antes de fechar — o professor repassa manualmente (R4 do RIPD, decisão 1 da §8 original).
+- **Modelo de termo do responsável:** virou conteúdo público (`apps/web/content/termo-responsavel.md`, rota `/termo-responsavel`, fora do menu de navegação), linkado do `AddStudentDialog` quando "menor de 18" está marcado. Texto vem de `docs/lgpd/termos-e-consentimento.md` §2 (já existia, não foi inventado).
+- **Consentimento de TERMOS/PRIVACIDADE para aluno adulto criado pelo professor (caso B, não-menor):** **não implementado** — o fluxo cria a conta sem registrar aceite de Termos/Privacidade (diferente do self-service, que registra via `finalizeSignup`). Gap conhecido; o aluno não vê essa tela até logar pela primeira vez, e não há tela de "primeiro login" nesta fase. Registrar como pendência para a Fase 6 (hardening) ou quando o portal ganhar uma tela de "completar cadastro".
