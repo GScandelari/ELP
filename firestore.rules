@@ -87,10 +87,22 @@ service cloud.firestore {
 
       // atribuicao de uma atividade a uma sala (ADR-012)
       match /assignments/{assignmentId} {
-        allow read: if isAccountOwner(classId)
-          || (isEnrolledStudent(classId) && resource.data.status == 'PUBLISHED');
-        allow write: if isAccountOwner(classId);
-        // publishAssignment / swapAssignmentActivity / releaseAssignmentResults via callable
+        // "get" (documento unico) aceita a condicao completa com
+        // isAccountOwner()/get(). "list" (o professor listando os
+        // assignments da sala) so aceita resource.data.accountId batendo
+        // com o where da query - mesmo com classId fixo pelo path, nao
+        // arriscar sem testar (ver docs/plano-fase-3.md secao 2/6:
+        // accountId denormalizado por publishAssignment/swapAssignmentActivity).
+        allow get: if isAccountOwner(classId)
+          || (isEnrolledStudent(classId) && resource.data.status in ['PUBLISHED', 'CLOSED']);
+        allow list: if isSignedIn() && resource.data.accountId == request.auth.uid;
+        // dono fecha/reabre (status) direto (RF-011), mas nao os campos
+        // que so publishAssignment/swapAssignmentActivity (Cloud Function) escrevem
+        allow update: if isAccountOwner(classId)
+          && request.resource.data.accountId == resource.data.accountId
+          && request.resource.data.activityId == resource.data.activityId
+          && request.resource.data.contentSnapshot == resource.data.contentSnapshot;
+        allow create, delete: if false; // so publishAssignment (Cloud Function)
       }
 
       match /resultsSummary/{studentId} {
@@ -135,15 +147,36 @@ service cloud.firestore {
       allow update: if hasRole('teacher')
         && resource.data.accountId == request.auth.uid
         && resource.data.get('locked', false) == false; // LOCKED e imutavel (ADR-014)
-      allow delete: if hasRole('teacher') && resource.data.accountId == request.auth.uid;
+      allow delete: if hasRole('teacher')
+        && resource.data.accountId == request.auth.uid
+        && resource.data.get('locked', false) == false; // fix: delete nao checava o lock
       // locked / status LOCKED / clonedFrom sao escritos por Cloud Function
 
       match /items/{itemId} {
-        allow read: if hasRole('teacher')
-          && activityOf(activityId).accountId == request.auth.uid;
-        allow write: if hasRole('teacher')
-          && activityOf(activityId).accountId == request.auth.uid
+        // resource.data.accountId direto (nao get() no pai) porque esta
+        // regra tambem cobre "list" (o Builder lista os itens de uma
+        // atividade) - get() contra o pai numa query de lista e o mesmo
+        // padrao que falhou com "Null value error" na Fase 2. accountId e
+        // denormalizado em cada item (client, ou cloneActivity no servidor).
+        // O lock, por outro lado, so existe no documento PAI - "write"
+        // ainda precisa de activityOf().get('locked', ...) mesmo sendo
+        // get()/documento unico, o que e seguro (o problema da Fase 2 foi
+        // especifico de "list", nao de escrita em documento unico).
+        allow read: if hasRole('teacher') && resource.data.accountId == request.auth.uid;
+        allow create: if hasRole('teacher')
+          && request.resource.data.accountId == request.auth.uid
           && activityOf(activityId).get('locked', false) == false;
+        allow update, delete: if hasRole('teacher')
+          && resource.data.accountId == request.auth.uid
+          && activityOf(activityId).get('locked', false) == false;
+      }
+
+      // indice reverso: em quais salas esta atividade esta atribuida
+      // (tela "Aplicar esta versao", ADR-014 secao 7) - sem precisar de
+      // collection group. Mantido por publishAssignment/swapAssignmentActivity.
+      match /assignmentRefs/{classId} {
+        allow read: if hasRole('teacher') && resource.data.accountId == request.auth.uid;
+        allow write: if false; // so Cloud Function
       }
     }
 
