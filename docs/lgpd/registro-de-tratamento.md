@@ -9,7 +9,7 @@
 | # | Operação | Dados pessoais | Titular | Base legal (Art. 7º / 11 / 14) | Finalidade | Retenção | Compartilhamento |
 |---|---|---|---|---|---|---|---|
 | 1 | Cadastro de professor | nome, e-mail | Professor | Execução de contrato (Art. 7º, V) | Criar e manter a conta | Enquanto a conta existir + 30 dias | Google (infra) |
-| 2 | Cadastro/vínculo de aluno | nome, e-mail, declaração "tem 18+?" (sem data de nascimento) | Aluno | Legítimo interesse educacional (maior de 18) / Consentimento do responsável (menor, Art. 14) | Participação nas turmas e atividades | Igual à conta; anonimizado na exclusão | Google (infra) |
+| 2 | Cadastro/vínculo de aluno — self-service (maior de 18) ou inscrição manual pelo professor, incluindo a criação da conta de um aluno menor de 18 (`addStudentToClass`, Fase 2) | nome, e-mail, declaração "tem 18+?" (sem data de nascimento) | Aluno | Legítimo interesse educacional (maior de 18) / Consentimento do responsável (menor, Art. 14) | Participação nas turmas e atividades | Igual à conta; anonimizado na exclusão | Google (infra) |
 | 3 | Registro de consentimento | identificador do titular, versão do texto, data/hora, papel de quem consentiu | Professor / Responsável legal | Cumprimento de obrigação legal (Art. 7º, II) | Comprovar consentimento | 5 anos após o término da relação | — |
 | 4 | Tentativas e respostas de atividades | respostas do aluno, notas, timestamps | Aluno | Mesma da operação 2 | Correção automática e acompanhamento pedagógico | Igual à conta; anonimizado na exclusão | Google (infra) |
 | 5 | Logs de auditoria | uid, ação, timestamp, IP | Professor / Aluno | Legítimo interesse — segurança (Art. 7º, IX) | Segurança e investigação de incidentes | 6 meses | — |

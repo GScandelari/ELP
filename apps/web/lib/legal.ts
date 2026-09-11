@@ -5,7 +5,11 @@ import { marked } from "marked";
 // Renderiza os documentos legais (Markdown -> HTML) no servidor.
 // O conteudo vem de arquivos versionados em apps/web/content/ e e confiavel
 // (nao ha entrada de usuario), por isso o HTML pode ser injetado direto.
-export type LegalSlug = "privacidade" | "termos" | "cookies";
+export type LegalSlug =
+  | "privacidade"
+  | "termos"
+  | "cookies"
+  | "termo-responsavel";
 
 export function getLegalHtml(slug: LegalSlug): string {
   const path = join(process.cwd(), "content", `${slug}.md`);

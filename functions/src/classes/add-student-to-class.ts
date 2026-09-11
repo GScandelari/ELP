@@ -1,18 +1,31 @@
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { CURRENT_LEGAL_VERSION } from "../lib/legal";
+
+type GuardianConsentPayload = {
+  guardianName?: unknown;
+  statementAccepted?: unknown;
+};
 
 type Payload = {
   classId?: unknown;
   studentEmail?: unknown;
+  studentName?: unknown;
+  isMinor?: unknown;
+  guardianConsent?: GuardianConsentPayload;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Inscrição manual de um aluno que já tem conta (RF-007, "caso A" do
- * plano). O caso "aluno sem conta" — criação da conta + consentimento do
- * responsável para menor (RF-021, ADR-011) — é a PR 2.6.
+ * Inscrição manual de um aluno (RF-007, UC manual).
+ *
+ * "Caso A" — o e-mail já tem conta: só confere `role == 'student'` e
+ * inscreve. "Caso B" — sem conta: cria a conta (Admin SDK), e se
+ * `isMinor` exige a declaração de consentimento do responsável legal
+ * (RF-021, ADR-011) antes de criar qualquer coisa. Em ambos os casos o
+ * professor precisa ser o dono da sala (RN-004).
  */
 export const addStudentToClass = onCall(async (request) => {
   if (!request.auth) {
@@ -31,6 +44,15 @@ export const addStudentToClass = onCall(async (request) => {
     typeof data.studentEmail === "string"
       ? data.studentEmail.trim().toLowerCase()
       : "";
+  const studentName =
+    typeof data.studentName === "string" ? data.studentName.trim() : "";
+  const isMinor = data.isMinor === true;
+  const guardianConsent = data.guardianConsent ?? {};
+  const guardianName =
+    typeof guardianConsent.guardianName === "string"
+      ? guardianConsent.guardianName.trim()
+      : "";
+  const guardianAccepted = guardianConsent.statementAccepted === true;
 
   if (!classId) {
     throw new HttpsError("invalid-argument", "Sala inválida.");
@@ -51,23 +73,78 @@ export const addStudentToClass = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Esta sala não é sua."); // RN-004
   }
 
-  let studentId: string;
+  let existingUid: string | null = null;
   try {
-    studentId = (await getAuth().getUserByEmail(email)).uid;
+    existingUid = (await getAuth().getUserByEmail(email)).uid;
   } catch {
-    throw new HttpsError(
-      "not-found",
-      "Não encontramos uma conta com este e-mail. O cadastro de um aluno " +
-        "sem conta (incluindo menores de idade) chega numa próxima atualização.",
-    );
+    existingUid = null; // sem conta com este e-mail -> "caso B" abaixo
   }
 
-  const studentUserSnap = await db.doc(`users/${studentId}`).get();
-  if (studentUserSnap.get("role") !== "student") {
-    throw new HttpsError(
-      "invalid-argument",
-      "Este e-mail não pertence a uma conta de aluno.",
-    );
+  let studentId: string;
+  let resolvedName: string;
+  let passwordSetupLink: string | undefined;
+
+  if (existingUid) {
+    // caso A — aluno já tem conta
+    studentId = existingUid;
+    const studentUserSnap = await db.doc(`users/${studentId}`).get();
+    if (studentUserSnap.get("role") !== "student") {
+      throw new HttpsError(
+        "invalid-argument",
+        "Este e-mail não pertence a uma conta de aluno.",
+      );
+    }
+    resolvedName = studentUserSnap.get("name") ?? "";
+  } else {
+    // caso B — cria a conta; menor exige consentimento do responsável antes
+    if (studentName.length < 2) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Informe o nome completo do aluno.",
+      );
+    }
+    if (isMinor && (guardianName.length < 2 || !guardianAccepted)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Para alunos menores de 18 anos, informe o nome do responsável " +
+          "legal e confirme que obteve o consentimento dele.",
+      );
+    }
+
+    const created = await getAuth().createUser({
+      email,
+      displayName: studentName,
+    });
+    studentId = created.uid;
+    await getAuth().setCustomUserClaims(studentId, { role: "student" });
+
+    const now = FieldValue.serverTimestamp();
+    await db.doc(`users/${studentId}`).set({
+      name: studentName,
+      email,
+      role: "student",
+      status: "ACTIVE",
+      isMinor,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    if (isMinor) {
+      // imutável (firestore.rules: consents.write = if false) — só esta função grava
+      await db.collection(`consents/${studentId}/records`).add({
+        type: "GUARDIAN_CONSENT",
+        textVersion: CURRENT_LEGAL_VERSION,
+        grantedAt: now,
+        grantedByRole: "teacher",
+        grantedByUid: uid,
+        guardianName,
+      });
+    }
+
+    resolvedName = studentName;
+    // Entrega ao aluno é manual no MVP (o professor repassa o link) — R4
+    // do RIPD, risco aceito; sem SMTP integrado nesta fase.
+    passwordSetupLink = await getAuth().generatePasswordResetLink(email);
   }
 
   const enrollmentRef = classRef.collection("enrollments").doc(studentId);
@@ -92,8 +169,8 @@ export const addStudentToClass = onCall(async (request) => {
         accountId: uid, // denormalizado - ver docs/plano-fase-2.md §8.1
         enrollmentType: "TEACHER_ASSIGNED",
         status: "ACTIVE",
-        studentName: studentUserSnap.get("name") ?? "",
-        studentEmail: studentUserSnap.get("email") ?? email,
+        studentName: resolvedName,
+        studentEmail: email,
         createdAt: now,
       });
     }
@@ -103,5 +180,9 @@ export const addStudentToClass = onCall(async (request) => {
     });
   });
 
-  return { studentId, enrollmentType: "TEACHER_ASSIGNED" as const };
+  return {
+    studentId,
+    enrollmentType: "TEACHER_ASSIGNED" as const,
+    passwordSetupLink,
+  };
 });

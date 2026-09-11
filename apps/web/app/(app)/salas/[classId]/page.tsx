@@ -119,7 +119,6 @@ function ClassDetail() {
         classId={params.classId}
         open={addDialogOpen}
         onClose={() => setAddDialogOpen(false)}
-        onAdded={() => setAddDialogOpen(false)}
       />
     </div>
   );

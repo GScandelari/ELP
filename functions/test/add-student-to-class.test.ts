@@ -10,18 +10,25 @@ import {
   wrapCallable,
 } from "./helpers";
 
+type AddStudentPayload = {
+  classId?: unknown;
+  studentEmail?: unknown;
+  studentName?: unknown;
+  isMinor?: unknown;
+  guardianConsent?: {
+    guardianName?: unknown;
+    statementAccepted?: unknown;
+  };
+};
+
 type AddStudentResult = {
   studentId: string;
   enrollmentType: "TEACHER_ASSIGNED";
+  passwordSetupLink?: string;
 };
 
 let db: Firestore;
-let call: ReturnType<
-  typeof wrapCallable<
-    { classId?: unknown; studentEmail?: unknown },
-    AddStudentResult
-  >
->;
+let call: ReturnType<typeof wrapCallable<AddStudentPayload, AddStudentResult>>;
 
 beforeAll(() => {
   db = initTestApp();
@@ -96,16 +103,6 @@ describe("addStudentToClass (integração)", () => {
     ).rejects.toMatchObject({ code: "invalid-argument" });
   });
 
-  it("rejeita e-mail sem conta (caso B ainda não implementado)", async () => {
-    await seedClass();
-    await expect(
-      call(
-        { classId: CLASS_ID, studentEmail: "naoexiste@test.com" },
-        teacherAuth,
-      ),
-    ).rejects.toMatchObject({ code: "not-found" });
-  });
-
   it("rejeita conta que não é de aluno", async () => {
     await seedClass();
     await seedAccount("outroprof@test.com", "teacher");
@@ -177,6 +174,126 @@ describe("addStudentToClass (integração)", () => {
     expect(enrollment.data()).toMatchObject({
       status: "ACTIVE",
       enrollmentType: "TEACHER_ASSIGNED",
+    });
+  });
+});
+
+describe("addStudentToClass — caso B (aluno sem conta)", () => {
+  it("rejeita sem o nome do aluno", async () => {
+    await seedClass();
+    await expect(
+      call(
+        { classId: CLASS_ID, studentEmail: "novo@test.com", isMinor: false },
+        teacherAuth,
+      ),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+  });
+
+  it("rejeita menor sem consentimento do responsável (RF-021)", async () => {
+    await seedClass();
+    await expect(
+      call(
+        {
+          classId: CLASS_ID,
+          studentEmail: "menor@test.com",
+          studentName: "Aluno Menor",
+          isMinor: true,
+        },
+        teacherAuth,
+      ),
+    ).rejects.toMatchObject({ code: "failed-precondition" });
+  });
+
+  it("rejeita menor com nome do responsável mas sem aceite explícito", async () => {
+    await seedClass();
+    await expect(
+      call(
+        {
+          classId: CLASS_ID,
+          studentEmail: "menor@test.com",
+          studentName: "Aluno Menor",
+          isMinor: true,
+          guardianConsent: {
+            guardianName: "Responsável Legal",
+            statementAccepted: false,
+          },
+        },
+        teacherAuth,
+      ),
+    ).rejects.toMatchObject({ code: "failed-precondition" });
+  });
+
+  it("cria a conta de um aluno adulto sem conta e devolve o link de senha", async () => {
+    await seedClass();
+    const res = await call(
+      {
+        classId: CLASS_ID,
+        studentEmail: "novo@test.com",
+        studentName: "Aluno Novo",
+        isMinor: false,
+      },
+      teacherAuth,
+    );
+
+    expect(res.enrollmentType).toBe("TEACHER_ASSIGNED");
+    expect(res.passwordSetupLink).toBeTruthy();
+
+    const authUser = await getAuth().getUser(res.studentId);
+    expect(authUser.customClaims).toMatchObject({ role: "student" });
+
+    const userDoc = await db.doc(`users/${res.studentId}`).get();
+    expect(userDoc.data()).toMatchObject({
+      name: "Aluno Novo",
+      email: "novo@test.com",
+      role: "student",
+      isMinor: false,
+    });
+
+    const consents = await db
+      .collection(`consents/${res.studentId}/records`)
+      .get();
+    expect(consents.empty).toBe(true); // sem GUARDIAN_CONSENT para adulto
+
+    const enrollment = await db
+      .doc(`classes/${CLASS_ID}/enrollments/${res.studentId}`)
+      .get();
+    expect(enrollment.data()).toMatchObject({
+      status: "ACTIVE",
+      enrollmentType: "TEACHER_ASSIGNED",
+      studentName: "Aluno Novo",
+    });
+  });
+
+  it("cria a conta de um aluno menor e registra o GUARDIAN_CONSENT", async () => {
+    await seedClass();
+    const res = await call(
+      {
+        classId: CLASS_ID,
+        studentEmail: "menor@test.com",
+        studentName: "Aluno Menor",
+        isMinor: true,
+        guardianConsent: {
+          guardianName: "Responsável Legal",
+          statementAccepted: true,
+        },
+      },
+      teacherAuth,
+    );
+
+    expect(res.passwordSetupLink).toBeTruthy();
+
+    const userDoc = await db.doc(`users/${res.studentId}`).get();
+    expect(userDoc.data()).toMatchObject({ isMinor: true, role: "student" });
+
+    const consents = await db
+      .collection(`consents/${res.studentId}/records`)
+      .get();
+    expect(consents.size).toBe(1);
+    expect(consents.docs[0]?.data()).toMatchObject({
+      type: "GUARDIAN_CONSENT",
+      grantedByRole: "teacher",
+      grantedByUid: "prof-1",
+      guardianName: "Responsável Legal",
     });
   });
 });

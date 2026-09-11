@@ -219,34 +219,50 @@ export function watchRoster(
   );
 }
 
+export type AddStudentInput = {
+  classId: string;
+  studentEmail: string;
+  studentName: string;
+  isMinor: boolean;
+  guardianConsent?: { guardianName: string; statementAccepted: true };
+};
+
 export type AddStudentResult = {
   studentId: string;
   enrollmentType: "TEACHER_ASSIGNED";
+  /** Só vem preenchido quando a conta do aluno foi criada agora ("caso B"). */
+  passwordSetupLink?: string;
 };
 
-/** Inscreve manualmente um aluno que já tem conta (RF-007, "caso A"). */
+/**
+ * Inscreve manualmente um aluno (RF-007). Se o e-mail já tem conta, só
+ * inscreve ("caso A"); senão cria a conta ("caso B") — para menor de 18
+ * anos (RF-021), `guardianConsent` é obrigatório.
+ */
 export async function addStudentToClass(
-  classId: string,
-  studentEmail: string,
+  input: AddStudentInput,
 ): Promise<AddStudentResult> {
   const { functions } = getFirebase();
-  const fn = httpsCallable<
-    { classId: string; studentEmail: string },
-    AddStudentResult
-  >(functions, "addStudentToClass");
-  const res = await fn({ classId, studentEmail });
+  const fn = httpsCallable<AddStudentInput, AddStudentResult>(
+    functions,
+    "addStudentToClass",
+  );
+  const res = await fn(input);
   return res.data;
 }
 
 export function addStudentErrorMessage(err: unknown): string {
   if (err instanceof FirebaseError) {
     switch (err.code) {
-      case "functions/not-found":
-        return err.message || "Não encontramos uma conta com este e-mail.";
       case "functions/already-exists":
         return "Este aluno já está nesta sala.";
       case "functions/invalid-argument":
-        return err.message || "Confira o e-mail informado.";
+        return err.message || "Confira os dados informados.";
+      case "functions/failed-precondition":
+        return (
+          err.message ||
+          "Para alunos menores de 18 anos, confirme o consentimento do responsável."
+        );
       case "functions/permission-denied":
         return "Apenas professores podem inscrever alunos.";
       default:
