@@ -300,6 +300,16 @@ Em aberto (baixo impacto, decidir se/quando aparecerem):
 - **Limites anti-abuso** (salas por professor, alunos por sala) — App Check só na Fase 6; sem teto por agora.
 - **`studentName` desatualizado no roster** — aceito até a Fase 6 ter `updateProfile`.
 
+### 8.1 Pegadinha de Security Rules encontrada na PR 2.3 — `list`/collection group só prova pelo filtro da query
+
+Descoberta rodando o e2e: para `list` (inclui collection group), o Firestore só consegue **provar** a regra sem ler cada documento quando a condição bate **exatamente com um filtro `where` da própria query**, no campo de **dado** (`resource.data.x == request.auth.uid`) — não no segmento do path (`isSelf`/wildcard) nem num campo fora do filtro (mesmo denormalizado). Fora disso o emulador nega a query com `Null value error` / `Property X is undefined on object`, mesmo sem nenhum `get()` na regra. **Só afeta `list`** — `get` (documento único) aceita a condição cheia (path + `resource.data`, com `get()` se precisar).
+
+Regra final em `classes/{classId}/enrollments/{studentId}` (via `match /{path=**}/enrollments/{studentId}`):
+- `allow get`: `resource.data.accountId == uid || isSelf(studentId)` (professor OU o próprio aluno, documento único).
+- `allow list`: só `resource.data.studentId == request.auth.uid` — por isso o client **precisa sempre incluir** `where('studentId', '==', uid)` na query (ver `watchTeacherClasses`/futura `watchMyEnrollments`).
+
+**Implicação para a PR 2.5** (roster do professor, `classes/{classId}/enrollments` sem filtro por `studentId`): essa regra de `list` **não cobre** o professor listando o roster da própria sala sem um `where` compatível — vai precisar de uma condição de `list` própria e provável pelo filtro que a tela do professor efetivamente usar (ex.: `where('accountId','==', uid)` denormalizado, se a query filtrar por isso) ou reavaliar o desenho quando chegar lá.
+
 ---
 
 ## 9. Checklist de conclusão da fase

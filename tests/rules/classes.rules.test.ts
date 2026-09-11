@@ -9,6 +9,7 @@ import {
 } from "@firebase/rules-unit-testing";
 import {
   collection,
+  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -55,6 +56,7 @@ beforeEach(async () => {
     });
     await setDoc(doc(db, `classes/${CLASS_ID}/enrollments/${STUDENT}`), {
       studentId: STUDENT,
+      accountId: TEACHER,
       enrollmentType: "SELF_ENROLLMENT",
       status: "ACTIVE",
     });
@@ -194,5 +196,22 @@ describe("firestore.rules — classes (Fase 2 / RN-004)", () => {
     await assertSucceeds(
       getDoc(doc(teacher(), `classes/${CLASS_ID}/enrollments/${STUDENT}`)),
     );
+  });
+
+  it("13. aluno lista (collection group) as próprias inscrições em qualquer sala", async () => {
+    const q = query(
+      collectionGroup(student(), "enrollments"),
+      where("studentId", "==", STUDENT),
+    );
+    const snap = await assertSucceeds(getDocs(q));
+    expect(snap.size).toBe(1);
+  });
+
+  it("14. aluno não consegue listar (collection group) as inscrições de outro", async () => {
+    const q = query(
+      collectionGroup(otherStudent(), "enrollments"),
+      where("studentId", "==", STUDENT),
+    );
+    await assertFails(getDocs(q));
   });
 });

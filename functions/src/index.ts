@@ -7,6 +7,7 @@ setGlobalOptions({ region: "southamerica-east1", maxInstances: 10 });
 export { ping } from "./health";
 export { finalizeSignup } from "./auth/finalize-signup";
 export { createClass } from "./classes/create-class";
+export { joinClassByCode } from "./classes/join-class-by-code";
 
 /*
  * -------------------------------------------------------------------------
@@ -15,7 +16,6 @@ export { createClass } from "./classes/create-class";
  * auth/
  *   recordConsent            (embutido em finalizeSignup por enquanto)
  * classes/
- *   joinClassByCode          valida sala ativa / não-duplicidade (RN-002, RN-003)
  *   addStudentToClass        inscrição manual + criação de conta de menor (RF-007, RF-021)
  *   removeStudentFromClass   marca enrollment como REMOVED (RF-005)
  * activities/
