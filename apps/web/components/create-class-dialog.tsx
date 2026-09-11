@@ -39,17 +39,20 @@ export function CreateClassDialog({
   }
 
   return (
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* fundo clicável para fechar — <button>, não <div>, para ter foco e
+          teclado (Enter/Espaço) de graça, sem violar a11y (S1082) */}
+      <button
+        type="button"
+        aria-label="Fechar"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/50"
+      />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-class-title"
-        className="w-full max-w-sm rounded-lg border border-border bg-background p-6 shadow-lg"
-        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-sm rounded-lg border border-border bg-background p-6 shadow-lg"
       >
         <h2 id="create-class-title" className="text-lg font-bold">
           Criar sala

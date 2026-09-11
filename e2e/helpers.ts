@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
 
 const PING = "http://127.0.0.1:5001/demo-elp/southamerica-east1/ping";
@@ -11,7 +12,7 @@ export async function waitForFunctionsEmulator() {
 }
 
 export function uniqueEmail(prefix: string) {
-  return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 1e4)}@e2e.local`;
+  return `${prefix}.${Date.now()}.${randomUUID().slice(0, 8)}@e2e.local`;
 }
 
 export async function registerTeacher(page: Page, email: string) {
