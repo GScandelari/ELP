@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { ClassNameDescriptionFields } from "@/components/class-name-description-fields";
 import { updateClass, type ClassSummary } from "@/lib/classes";
 
 export function EditClassDialog({
@@ -42,39 +43,13 @@ export function EditClassDialog({
       </h2>
 
       <form onSubmit={onSubmit} className="mt-4 space-y-4">
-        <div>
-          <label
-            htmlFor="edit-class-name"
-            className="block text-sm font-medium"
-          >
-            Nome
-          </label>
-          <input
-            id="edit-class-name"
-            required
-            minLength={2}
-            maxLength={80}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="edit-class-description"
-            className="block text-sm font-medium"
-          >
-            Descrição (opcional)
-          </label>
-          <textarea
-            id="edit-class-description"
-            maxLength={500}
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-        </div>
+        <ClassNameDescriptionFields
+          idPrefix="edit-class"
+          name={name}
+          description={description}
+          onNameChange={setName}
+          onDescriptionChange={setDescription}
+        />
 
         {error && (
           <p role="alert" className="text-sm text-red-600">
