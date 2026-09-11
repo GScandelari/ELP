@@ -214,4 +214,21 @@ describe("firestore.rules — classes (Fase 2 / RN-004)", () => {
     );
     await assertFails(getDocs(q));
   });
+
+  it("15. professor lista o roster da própria sala (subcoleção)", async () => {
+    const q = query(
+      collection(teacher(), `classes/${CLASS_ID}/enrollments`),
+      where("accountId", "==", TEACHER),
+    );
+    const snap = await assertSucceeds(getDocs(q));
+    expect(snap.size).toBe(1);
+  });
+
+  it("16. outro professor não consegue listar o roster filtrando pelo accountId do dono", async () => {
+    const q = query(
+      collection(otherTeacher(), `classes/${CLASS_ID}/enrollments`),
+      where("accountId", "==", TEACHER), // tenta "espiar" usando o id do dono real
+    );
+    await assertFails(getDocs(q));
+  });
 });

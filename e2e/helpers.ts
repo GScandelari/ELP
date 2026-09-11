@@ -26,6 +26,17 @@ export async function registerTeacher(page: Page, email: string) {
   await page.getByRole("button", { name: "Criar conta" }).click();
 }
 
+export async function login(
+  page: Page,
+  email: string,
+  password = "senha123456",
+) {
+  await page.goto("/entrar");
+  await page.getByLabel("E-mail").fill(email);
+  await page.getByLabel("Senha").fill(password);
+  await page.getByRole("button", { name: "Entrar" }).click();
+}
+
 export async function registerStudent(page: Page, email: string) {
   await page.goto("/cadastro");
   await page.getByRole("button", { name: "Aluno" }).click();

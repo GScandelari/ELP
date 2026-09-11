@@ -3,9 +3,18 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { watchClass, type ClassSummary } from "@/lib/classes";
+import { useAuth } from "@/lib/auth";
+import {
+  watchClass,
+  watchRoster,
+  type ClassSummary,
+  type RosterEntry,
+} from "@/lib/classes";
 import { RequireRole } from "@/components/require-role";
 import { EnrollmentCodeBadge } from "@/components/enrollment-code-badge";
+import { AddStudentDialog } from "@/components/add-student-dialog";
+import { StudentRoster } from "@/components/student-roster";
+import { Button } from "@/components/ui/button";
 
 const STATUS_LABEL: Record<ClassSummary["status"], string> = {
   ACTIVE: "Ativa",
@@ -23,8 +32,11 @@ export default function ClassDetailPage() {
 
 function ClassDetail() {
   const params = useParams<{ classId: string }>();
+  const { user } = useAuth();
   const [klass, setKlass] = useState<ClassSummary | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [roster, setRoster] = useState<RosterEntry[]>([]);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   useEffect(
     () =>
@@ -34,6 +46,11 @@ function ClassDetail() {
       }),
     [params.classId],
   );
+
+  useEffect(() => {
+    if (!user) return;
+    return watchRoster(params.classId, user.uid, setRoster);
+  }, [params.classId, user]);
 
   if (!loaded) {
     return <p className="text-sm text-muted-foreground">Carregando…</p>;
@@ -87,17 +104,23 @@ function ClassDetail() {
       </div>
 
       <div className="mt-6 rounded-lg border border-border p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <h2 className="text-sm font-medium text-muted-foreground">
-            Alunos inscritos
+            Alunos inscritos ({klass.studentCount})
           </h2>
-          <span className="text-sm font-medium">{klass.studentCount}</span>
+          <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+            Adicionar aluno
+          </Button>
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          A lista de alunos e a inscrição manual chegam nas próximas PRs da Fase
-          2.
-        </p>
+        <StudentRoster classId={params.classId} roster={roster} />
       </div>
+
+      <AddStudentDialog
+        classId={params.classId}
+        open={addDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+        onAdded={() => setAddDialogOpen(false)}
+      />
     </div>
   );
 }

@@ -8,6 +8,8 @@ export { ping } from "./health";
 export { finalizeSignup } from "./auth/finalize-signup";
 export { createClass } from "./classes/create-class";
 export { joinClassByCode } from "./classes/join-class-by-code";
+export { addStudentToClass } from "./classes/add-student-to-class";
+export { removeStudentFromClass } from "./classes/remove-student-from-class";
 
 /*
  * -------------------------------------------------------------------------
@@ -16,8 +18,7 @@ export { joinClassByCode } from "./classes/join-class-by-code";
  * auth/
  *   recordConsent            (embutido em finalizeSignup por enquanto)
  * classes/
- *   addStudentToClass        inscrição manual + criação de conta de menor (RF-007, RF-021)
- *   removeStudentFromClass   marca enrollment como REMOVED (RF-005)
+ *   addStudentToClass        estende para "aluno sem conta" + menor (RF-021) na PR 2.6
  * activities/
  *   publishAssignment        valida (RN-006); congela contentSnapshot + assignmentKeys
  *   cloneActivity            duplica atividade + itens (ADR-014)

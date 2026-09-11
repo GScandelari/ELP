@@ -108,17 +108,21 @@ service cloud.firestore {
     // para o que segue:
     //
     // "list"/collection group so aceita uma condicao provavel PELO PROPRIO
-    // FILTRO da query (resource.data.studentId == request.auth.uid, que so
-    // "fecha" quando a query tem where('studentId','==', uid) - e o caso de
-    // toda leitura do client). Usar o segmento do path (isSelf(studentId))
-    // ou um campo fora do filtro (accountId) aqui faz o emulador negar a
-    // query com "Null value error" / "Property X is undefined on object" -
-    // funciona em "get" (documento unico) mas nao em "list"/collection
-    // group. Detalhe encontrado testando o e2e da Fase 2 (ver PR 2.3).
+    // FILTRO da query, num campo de dado - cada lado do OR abaixo so
+    // "fecha" quando a query correspondente tem o where casado
+    // (aluno: where('studentId','==', uid); professor no roster da sala:
+    // where('accountId','==', uid), mesmo o path ja escopando a sala,
+    // porque a regra nao "lembra" leituras anteriores). Usar o segmento
+    // do path (isSelf(studentId)) aqui faz o emulador negar a query com
+    // "Null value error" / "Property X is undefined on object" - funciona
+    // em "get" (documento unico) mas nao em "list"/collection group.
+    // Detalhe encontrado testando o e2e da Fase 2 (ver PR 2.3 e PR 2.5).
     match /{path=**}/enrollments/{studentId} {
       allow get: if isSignedIn() &&
         (resource.data.accountId == request.auth.uid || isSelf(studentId));
-      allow list: if isSignedIn() && resource.data.studentId == request.auth.uid;
+      allow list: if isSignedIn() &&
+        (resource.data.studentId == request.auth.uid ||
+         resource.data.accountId == request.auth.uid);
       allow write: if false; // joinClassByCode / addStudentToClass (Cloud Function)
     }
 
