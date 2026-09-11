@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
     "test": "vitest run --passWithNoTests",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "serve": "pnpm build && firebase emulators:start --only functions"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "@typescript-eslint/eslint-plugin": "^8.18.1",
     "@typescript-eslint/parser": "^8.18.1",
     "eslint": "^8.57.1",
+    "firebase-functions-test": "^3.4.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

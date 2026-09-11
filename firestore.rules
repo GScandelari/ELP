@@ -65,9 +65,14 @@ service cloud.firestore {
     // ---- classes ----
     match /classes/{classId} {
       allow read: if isAccountOwner(classId) || isEnrolledStudent(classId);
-      allow create: if hasRole('teacher')
-        && request.resource.data.accountId == request.auth.uid;
-      allow update, delete: if isAccountOwner(classId);
+      allow create: if false; // createClass (callable) - precisa do codigo unico (RN-001)
+      allow delete: if isAccountOwner(classId);
+      // dono edita nome/descricao/status direto (RN-004), mas nao os campos
+      // controlados pela Cloud Function (codigo, dono, contador de alunos)
+      allow update: if isAccountOwner(classId)
+        && request.resource.data.accountId == resource.data.accountId
+        && request.resource.data.enrollmentCode == resource.data.enrollmentCode
+        && request.resource.data.studentCount == resource.data.studentCount;
 
       match /enrollments/{studentId} {
         allow read: if isAccountOwner(classId) || isSelf(studentId);
