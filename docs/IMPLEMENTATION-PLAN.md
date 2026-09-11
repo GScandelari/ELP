@@ -318,15 +318,16 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 - ✅ Testes E2E (Playwright): cadastro de professor → painel, logout → login, bloqueio de aluno menor (PR #5).
 - **Critério de saída atingido:** RF-001 a RF-003, RF-019, RF-021 verificados em teste E2E automatizado no CI.
 
-### Fase 2 — Salas / Classes (2 semanas)
+### Fase 2 — Salas / Classes ✅ (PRs #6–#12)
 
-- `createClass` (callable) com geração atômica de código único via transação em `enrollmentCodes/{code}` (RN-001).
-- `joinClassByCode` (callable), validando sala ativa (RN-002) e não-duplicidade (RN-003).
-- Inscrição manual pelo professor, incluindo o fluxo de aluno menor (declaração de consentimento do responsável — RF-021, ADR-011).
-- Portal do professor: listar salas, ver alunos inscritos.
-- Portal do aluno: listar salas, entrar por código.
-- Rascunho do guia de onboarding/suporte manual (`docs/operations/onboarding-mvp.md`) — sem portal admin no MVP.
-- **Critério de saída:** UC-002 e UC-003 do SDD completos, RN-001 a RN-004 cobertos por teste de regras.
+- ✅ `createClass` (callable) com geração atômica de código único via transação em `enrollmentCodes/{code}` (RN-001, PR #6).
+- ✅ Portal do professor: criar/editar/ativar/desativar/arquivar sala, gerar novo código, listar salas (PRs #7, #12).
+- ✅ `joinClassByCode` (callable), validando sala ativa (RN-002) e não-duplicidade (RN-003); reingresso após remoção reativa em vez de duplicar (PR #8).
+- ✅ Portal do aluno: entrar por código, listar salas (PR #9).
+- ✅ Inscrição manual pelo professor — aluno já com conta e remoção mínima (RF-005) na PR #10; aluno sem conta (cria a conta + link de definição de senha) e o fluxo de menor com declaração de consentimento do responsável (RF-021, ADR-011, `GUARDIAN_CONSENT` em `consents/{uid}`) na PR #11.
+- ✅ Security Rules: achado real de `list`/collection group documentado em `docs/plano-fase-2.md` §8.1 — a regra só prova acesso pelo campo filtrado na própria query (`studentId` para o aluno, `accountId` para o professor no roster); `get` aceita a condição cheia.
+- ✅ Guia de onboarding/suporte manual preenchido com o fluxo real (`docs/operations/onboarding-mvp.md`) — sem portal admin no MVP.
+- **Critério de saída atingido:** UC-002 e UC-003 do SDD completos; RN-001 a RN-004 cobertos por testes de Security Rules (27) e integração de Functions (40); E2E (Playwright, 8 cenários) cobrindo criar sala → entrar por código → inscrição manual (com e sem conta, incluindo menor) → gerência da sala, verificados no CI.
 
 ### Fase 3 — Repositório de atividades + Activity Engine + 4 tipos do MVP (5–7 semanas, a maior fase)
 
