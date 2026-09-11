@@ -175,6 +175,100 @@ export function watchMyClasses(
   );
 }
 
+export type RosterEntry = {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  enrollmentType: "SELF_ENROLLMENT" | "TEACHER_ASSIGNED";
+};
+
+/**
+ * Observa o roster de uma sala. `accountId` no filtro não restringe nada
+ * na prática (é o mesmo em todo enrollment da sala) — está aí porque é o
+ * que faz a rule de `list` provar o acesso do professor (ver
+ * docs/plano-fase-2.md §8.1); omiti-lo faz a query ser negada.
+ */
+export function watchRoster(
+  classId: string,
+  teacherUid: string,
+  onChange: (roster: RosterEntry[]) => void,
+): Unsubscribe {
+  const { db } = getFirebase();
+  const q = query(
+    collection(db, "classes", classId, "enrollments"),
+    where("accountId", "==", teacherUid),
+    where("status", "==", "ACTIVE"),
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const roster = snap.docs
+        .map((d) => d.data())
+        .map(
+          (data): RosterEntry => ({
+            studentId: data.studentId,
+            studentName: data.studentName ?? "",
+            studentEmail: data.studentEmail ?? "",
+            enrollmentType: data.enrollmentType,
+          }),
+        )
+        .sort((a, b) => a.studentName.localeCompare(b.studentName));
+      onChange(roster);
+    },
+    () => onChange([]),
+  );
+}
+
+export type AddStudentResult = {
+  studentId: string;
+  enrollmentType: "TEACHER_ASSIGNED";
+};
+
+/** Inscreve manualmente um aluno que já tem conta (RF-007, "caso A"). */
+export async function addStudentToClass(
+  classId: string,
+  studentEmail: string,
+): Promise<AddStudentResult> {
+  const { functions } = getFirebase();
+  const fn = httpsCallable<
+    { classId: string; studentEmail: string },
+    AddStudentResult
+  >(functions, "addStudentToClass");
+  const res = await fn({ classId, studentEmail });
+  return res.data;
+}
+
+export function addStudentErrorMessage(err: unknown): string {
+  if (err instanceof FirebaseError) {
+    switch (err.code) {
+      case "functions/not-found":
+        return err.message || "Não encontramos uma conta com este e-mail.";
+      case "functions/already-exists":
+        return "Este aluno já está nesta sala.";
+      case "functions/invalid-argument":
+        return err.message || "Confira o e-mail informado.";
+      case "functions/permission-denied":
+        return "Apenas professores podem inscrever alunos.";
+      default:
+        return "Não foi possível inscrever o aluno. Tente novamente.";
+    }
+  }
+  return "Não foi possível inscrever o aluno. Tente novamente.";
+}
+
+/** Remove um aluno da sala (RF-005) — marca REMOVED, não apaga. */
+export async function removeStudentFromClass(
+  classId: string,
+  studentId: string,
+): Promise<void> {
+  const { functions } = getFirebase();
+  const fn = httpsCallable<
+    { classId: string; studentId: string },
+    { ok: boolean }
+  >(functions, "removeStudentFromClass");
+  await fn({ classId, studentId });
+}
+
 export function joinClassErrorMessage(err: unknown): string {
   if (err instanceof FirebaseError) {
     switch (err.code) {
