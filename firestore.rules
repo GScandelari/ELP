@@ -79,10 +79,11 @@ service cloud.firestore {
         && request.resource.data.enrollmentCode == resource.data.enrollmentCode
         && request.resource.data.studentCount == resource.data.studentCount;
 
-      match /enrollments/{studentId} {
-        allow read: if isAccountOwner(classId) || isSelf(studentId);
-        allow write: if false; // joinClassByCode / inscricao manual (Cloud Function)
-      }
+      // leitura de /enrollments (get, list e collection group) e a regra
+      // unica la embaixo, "match /{path=**}/enrollments/{studentId}" -
+      // ter dois match block para o mesmo path (este aninhado + o
+      // recursivo) faz o emulador falhar com "Null value error" numa
+      // query de collection group, mesmo sem get() em nenhum dos dois.
 
       // atribuicao de uma atividade a uma sala (ADR-012)
       match /assignments/{assignmentId} {
@@ -96,6 +97,29 @@ service cloud.firestore {
         allow read: if isAccountOwner(classId) || isSelf(studentId);
         allow write: if false; // agregacao (Cloud Function)
       }
+    }
+
+    // /classes/{classId}/enrollments/{studentId} - get (professor le um
+    // aluno do roster, ou o proprio aluno), list (roster) e collection
+    // group (aluno lista as proprias inscricoes em qualquer sala, sem
+    // saber os classIds de antemao - "minhas salas") passam por esta
+    // regra recursiva unica. accountId e studentId sao denormalizados no
+    // enrollment (joinClassByCode / addStudentToClass) especificamente
+    // para o que segue:
+    //
+    // "list"/collection group so aceita uma condicao provavel PELO PROPRIO
+    // FILTRO da query (resource.data.studentId == request.auth.uid, que so
+    // "fecha" quando a query tem where('studentId','==', uid) - e o caso de
+    // toda leitura do client). Usar o segmento do path (isSelf(studentId))
+    // ou um campo fora do filtro (accountId) aqui faz o emulador negar a
+    // query com "Null value error" / "Property X is undefined on object" -
+    // funciona em "get" (documento unico) mas nao em "list"/collection
+    // group. Detalhe encontrado testando o e2e da Fase 2 (ver PR 2.3).
+    match /{path=**}/enrollments/{studentId} {
+      allow get: if isSignedIn() &&
+        (resource.data.accountId == request.auth.uid || isSelf(studentId));
+      allow list: if isSignedIn() && resource.data.studentId == request.auth.uid;
+      allow write: if false; // joinClassByCode / addStudentToClass (Cloud Function)
     }
 
     // ---- repositorio de atividades do professor (ADR-012 / ADR-014) ----
