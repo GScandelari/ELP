@@ -1,5 +1,8 @@
 import { randomInt } from "node:crypto";
 
+// normalizeCode/formatCode/isValidCode são espelhados (sem generateCode,
+// que só roda no servidor) em apps/web/lib/enrollment-code.ts — manter em
+// sincronia.
 /**
  * Alfabeto do código de inscrição: 29 símbolos — consoantes (sem vogais,
  * para não formar palavras; isso já exclui os ambíguos I e O) mais os

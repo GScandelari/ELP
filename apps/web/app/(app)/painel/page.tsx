@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { buttonClassName } from "@/components/ui/button";
 
 export default function PainelPage() {
   const { user, role } = useAuth();
@@ -9,9 +11,15 @@ export default function PainelPage() {
     <div className="mx-auto max-w-2xl">
       <h1 className="text-2xl font-bold">Painel</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Área autenticada — placeholder da Fase 1. O portal do professor e do
-        aluno vem nas próximas fases.
+        Área autenticada — o restante do portal do professor e do aluno vem nas
+        próximas fases.
       </p>
+
+      {(role === "teacher" || role === "student") && (
+        <Link href="/salas" className={buttonClassName({ className: "mt-4" })}>
+          Minhas salas
+        </Link>
+      )}
 
       <dl className="mt-6 space-y-1 text-sm">
         <div>

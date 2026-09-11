@@ -64,7 +64,12 @@ service cloud.firestore {
 
     // ---- classes ----
     match /classes/{classId} {
-      allow read: if isAccountOwner(classId) || isEnrolledStudent(classId);
+      // "resource.data" direto (em vez de isAccountOwner/get()) porque esta
+      // regra tambem cobre "list": get() contra o proprio path avaliado
+      // numa query de lista sem documento correspondente falha com
+      // "Null value error" (o snapshot de get() nao existe -> .data e null).
+      allow read: if isSignedIn() &&
+        (resource.data.accountId == request.auth.uid || isEnrolledStudent(classId));
       allow create: if false; // createClass (callable) - precisa do codigo unico (RN-001)
       allow delete: if isAccountOwner(classId);
       // dono edita nome/descricao/status direto (RN-004), mas nao os campos
