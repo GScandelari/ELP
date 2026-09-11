@@ -319,10 +319,11 @@ Regra final em `classes/{classId}/enrollments/{studentId}` (via `match /{path=**
 - [x] Índices adicionados e deployáveis (`classes`, `enrollments` collection group)
 - [x] Portais de professor e aluno navegáveis (PRs 2.2, 2.4, 2.5)
 - [x] Fluxo de menor com `GUARDIAN_CONSENT` registrado — `addStudentToClass` caso B (PR 2.6); modelo de termo em `apps/web/content/termo-responsavel.md`, rota pública `/termo-responsavel`
-- [x] E2E cobrindo o fluxo (`salas-professor`, `salas-aluno`, `salas-inscricao-manual` — inclui o cenário de menor) verdes no CI
-- [ ] `docs/operations/onboarding-mvp.md` (rascunho) — PR 2.7
-- [ ] Fase 2 marcada como ✅ no `IMPLEMENTATION-PLAN.md` — PR 2.7
+- [x] E2E cobrindo o fluxo (`salas-professor`, `salas-aluno`, `salas-inscricao-manual` — inclui o cenário de menor — e `salas-gerencia`) verdes no CI
+- [x] `docs/operations/onboarding-mvp.md` preenchido com o fluxo real (PR 2.7)
+- [x] Fase 2 marcada como ✅ no `IMPLEMENTATION-PLAN.md` (PR 2.7)
 - [x] `docs/lgpd/registro-de-tratamento.md` atualizado (operação 2 já cobria "cadastro/vínculo de aluno"; explicitada a inscrição manual de menor pelo professor)
+- [x] Gerência da sala (RF-005): editar nome/descrição, ativar/desativar/arquivar, gerar novo código de inscrição (`rotateEnrollmentCode`) — PR 2.7
 
 ### 9.1 Decisões de implementação da PR 2.6 (não estavam fechadas no plano original)
 

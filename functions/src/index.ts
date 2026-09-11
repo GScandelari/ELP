@@ -10,6 +10,7 @@ export { createClass } from "./classes/create-class";
 export { joinClassByCode } from "./classes/join-class-by-code";
 export { addStudentToClass } from "./classes/add-student-to-class";
 export { removeStudentFromClass } from "./classes/remove-student-from-class";
+export { rotateEnrollmentCode } from "./classes/rotate-enrollment-code";
 
 /*
  * -------------------------------------------------------------------------
@@ -17,8 +18,6 @@ export { removeStudentFromClass } from "./classes/remove-student-from-class";
  *
  * auth/
  *   recordConsent            (embutido em finalizeSignup por enquanto)
- * classes/
- *   addStudentToClass        estende para "aluno sem conta" + menor (RF-021) na PR 2.6
  * activities/
  *   publishAssignment        valida (RN-006); congela contentSnapshot + assignmentKeys
  *   cloneActivity            duplica atividade + itens (ADR-014)

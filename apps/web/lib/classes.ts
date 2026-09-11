@@ -10,6 +10,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  updateDoc,
   where,
   type DocumentData,
   type Unsubscribe,
@@ -96,6 +97,34 @@ export async function getClassOnce(classId: string): Promise<ClassSummary | null
   const { db } = getFirebase();
   const snap = await getDoc(doc(db, "classes", classId));
   return mapClass(snap.id, snap.data());
+}
+
+/**
+ * Edita nome/descrição/status da sala (RF-005) — escrita direta, a rule já
+ * trava os campos controlados pelo backend (accountId, enrollmentCode,
+ * studentCount).
+ */
+export async function updateClass(
+  classId: string,
+  patch: Partial<Pick<ClassSummary, "name" | "description" | "status">>,
+): Promise<void> {
+  const { db } = getFirebase();
+  await updateDoc(doc(db, "classes", classId), patch);
+}
+
+export type RotateCodeResult = { enrollmentCode: string };
+
+/** Gera um novo código de inscrição, invalidando o anterior. */
+export async function rotateEnrollmentCode(
+  classId: string,
+): Promise<RotateCodeResult> {
+  const { functions } = getFirebase();
+  const fn = httpsCallable<{ classId: string }, RotateCodeResult>(
+    functions,
+    "rotateEnrollmentCode",
+  );
+  const res = await fn({ classId });
+  return res.data;
 }
 
 export function createClassErrorMessage(err: unknown): string {

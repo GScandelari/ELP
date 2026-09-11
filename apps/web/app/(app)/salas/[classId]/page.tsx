@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import {
+  rotateEnrollmentCode,
+  updateClass,
   watchClass,
   watchRoster,
   type ClassSummary,
@@ -13,6 +15,7 @@ import {
 import { RequireRole } from "@/components/require-role";
 import { EnrollmentCodeBadge } from "@/components/enrollment-code-badge";
 import { AddStudentDialog } from "@/components/add-student-dialog";
+import { EditClassDialog } from "@/components/edit-class-dialog";
 import { StudentRoster } from "@/components/student-roster";
 import { Button } from "@/components/ui/button";
 
@@ -37,6 +40,7 @@ function ClassDetail() {
   const [loaded, setLoaded] = useState(false);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(
     () =>
@@ -91,6 +95,17 @@ function ClassDetail() {
         </span>
       </div>
 
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setEditDialogOpen(true)}
+        >
+          Editar
+        </Button>
+        <StatusActions classId={params.classId} status={klass.status} />
+      </div>
+
       <div className="mt-6 rounded-lg border border-border p-4">
         <h2 className="text-sm font-medium text-muted-foreground">
           Código de inscrição
@@ -98,8 +113,9 @@ function ClassDetail() {
         <p className="mt-1 text-xs text-muted-foreground">
           Compartilhe com os alunos para que entrem na sala por conta própria.
         </p>
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <EnrollmentCodeBadge code={klass.enrollmentCode} />
+          <RotateCodeButton classId={params.classId} />
         </div>
       </div>
 
@@ -120,6 +136,94 @@ function ClassDetail() {
         open={addDialogOpen}
         onClose={() => setAddDialogOpen(false)}
       />
+      <EditClassDialog
+        classId={params.classId}
+        klass={klass}
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+      />
     </div>
+  );
+}
+
+function StatusActions({
+  classId,
+  status,
+}: {
+  classId: string;
+  status: ClassSummary["status"];
+}) {
+  const [busy, setBusy] = useState(false);
+
+  async function setStatus(next: ClassSummary["status"]) {
+    setBusy(true);
+    try {
+      await updateClass(classId, { status: next });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      {status !== "ACTIVE" && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() => setStatus("ACTIVE")}
+        >
+          Ativar
+        </Button>
+      )}
+      {status === "ACTIVE" && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() => setStatus("INACTIVE")}
+        >
+          Desativar
+        </Button>
+      )}
+      {status !== "ARCHIVED" && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() => {
+            if (
+              confirm(
+                "Arquivar esta sala? Ela deixa de aceitar novas inscrições.",
+              )
+            )
+              setStatus("ARCHIVED");
+          }}
+        >
+          Arquivar
+        </Button>
+      )}
+    </>
+  );
+}
+
+function RotateCodeButton({ classId }: { classId: string }) {
+  const [busy, setBusy] = useState(false);
+
+  async function onClick() {
+    if (!confirm("Gerar um novo código? O código atual deixa de funcionar."))
+      return;
+    setBusy(true);
+    try {
+      await rotateEnrollmentCode(classId);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Button size="sm" variant="outline" disabled={busy} onClick={onClick}>
+      {busy ? "Gerando…" : "Gerar novo código"}
+    </Button>
   );
 }
