@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
-import { ActivityMetaFields } from "@/components/activity-meta-fields";
+import { useState } from "react";
+import {
+  ActivityFormDialog,
+  type ActivityFormValues,
+} from "@/components/activity-form-dialog";
 import {
   activityErrorMessage,
   createActivity,
-  type ActivityDifficulty,
   type ActivityType,
 } from "@/lib/activities";
 
@@ -29,47 +29,36 @@ export function CreateActivityDialog({
   onClose: () => void;
   onCreated: (activityId: string) => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [type, setType] = useState<ActivityType>("MULTIPLE_CHOICE");
-  const [difficulty, setDifficulty] = useState<ActivityDifficulty>("EASY");
-  const [tagsInput, setTagsInput] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    setBusy(true);
-    try {
-      const tags = tagsInput
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
-      const activityId = await createActivity(uid, {
-        title,
-        description,
-        type,
-        difficulty,
-        tags,
-      });
-      setTitle("");
-      setDescription("");
-      setTagsInput("");
-      onCreated(activityId);
-    } catch (err) {
-      setError(activityErrorMessage(err));
-      setBusy(false);
-    }
+  async function onSubmit({
+    title,
+    description,
+    difficulty,
+    tags,
+  }: ActivityFormValues) {
+    const activityId = await createActivity(uid, {
+      title,
+      description,
+      type,
+      difficulty,
+      tags,
+    });
+    onCreated(activityId);
   }
 
   return (
-    <Dialog open={open} onClose={onClose} labelledBy="create-activity-heading">
-      <h2 id="create-activity-heading" className="text-lg font-bold">
-        Nova atividade
-      </h2>
-
-      <form onSubmit={onSubmit} className="mt-4 space-y-4">
+    <ActivityFormDialog
+      open={open}
+      onClose={onClose}
+      idPrefix="activity"
+      title="Nova atividade"
+      submitLabel="Criar atividade"
+      submitBusyLabel="Criando…"
+      resetOnSuccess
+      mapError={activityErrorMessage}
+      onSubmit={onSubmit}
+      extraFields={
         <div>
           <label htmlFor="activity-type" className="block text-sm font-medium">
             Tipo
@@ -87,39 +76,7 @@ export function CreateActivityDialog({
             ))}
           </select>
         </div>
-
-        <ActivityMetaFields
-          idPrefix="activity"
-          title={title}
-          description={description}
-          difficulty={difficulty}
-          tagsInput={tagsInput}
-          onTitleChange={setTitle}
-          onDescriptionChange={setDescription}
-          onDifficultyChange={setDifficulty}
-          onTagsInputChange={setTagsInput}
-        />
-
-        {error && (
-          <p role="alert" className="text-sm text-red-600">
-            {error}
-          </p>
-        )}
-
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={busy}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={busy}>
-            {busy ? "Criando…" : "Criar atividade"}
-          </Button>
-        </div>
-      </form>
-    </Dialog>
+      }
+    />
   );
 }
