@@ -3,13 +3,17 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth";
 import {
   setActivityStatus,
   watchActivity,
   type ActivitySummary,
 } from "@/lib/activities";
+import { watchActivityItems, type ActivityItem } from "@/lib/activity-items";
 import { RequireRole } from "@/components/require-role";
 import { EditActivityDialog } from "@/components/edit-activity-dialog";
+import { MultipleChoiceBuilder } from "@/components/multiple-choice-builder";
+import { MultipleChoiceRenderer } from "@/components/multiple-choice-renderer";
 import { Button } from "@/components/ui/button";
 
 const STATUS_LABEL: Record<ActivitySummary["status"], string> = {
@@ -36,6 +40,7 @@ export default function ActivityDetailPage() {
 
 function ActivityDetail() {
   const params = useParams<{ activityId: string }>();
+  const { user } = useAuth();
   const [activity, setActivity] = useState<ActivitySummary | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -49,7 +54,7 @@ function ActivityDetail() {
     [params.activityId],
   );
 
-  if (!loaded) {
+  if (!user || !loaded) {
     return <p className="text-sm text-muted-foreground">Carregando…</p>;
   }
 
@@ -115,11 +120,26 @@ function ActivityDetail() {
         <h2 className="text-sm font-medium text-muted-foreground">
           Itens ({activity.itemCount})
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          O construtor de itens para {TYPE_LABEL[activity.type].toLowerCase()}{" "}
-          chega numa próxima PR da Fase 3.
-        </p>
+        <div className="mt-2">
+          {activity.type === "MULTIPLE_CHOICE" ? (
+            <MultipleChoiceBuilder
+              activityId={params.activityId}
+              uid={user.uid}
+              readOnly={activity.locked}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              O construtor de itens para{" "}
+              {TYPE_LABEL[activity.type].toLowerCase()} chega numa próxima PR da
+              Fase 3.
+            </p>
+          )}
+        </div>
       </div>
+
+      {activity.type === "MULTIPLE_CHOICE" && (
+        <ActivityPreview activityId={params.activityId} uid={user.uid} />
+      )}
 
       <EditActivityDialog
         activityId={params.activityId}
@@ -211,4 +231,47 @@ function StatusActions({
   }
 
   return null;
+}
+
+/**
+ * Mostra como o aluno veria a atividade (sem gabarito) — só leitura
+ * nesta fase (docs/plano-fase-3.md §1.1). Observa os itens só enquanto
+ * aberto, para não pagar leitura à toa quando ninguém pediu.
+ */
+function ActivityPreview({
+  activityId,
+  uid,
+}: {
+  activityId: string;
+  uid: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<ActivityItem[] | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    return watchActivityItems(activityId, uid, setItems);
+  }, [open, activityId, uid]);
+
+  return (
+    <div className="mt-6 rounded-lg border border-border p-4">
+      <Button size="sm" variant="outline" onClick={() => setOpen((v) => !v)}>
+        {open ? "Ocultar" : "Mostrar"} pré-visualização do aluno
+      </Button>
+      {open && (
+        <div className="mt-3">
+          {items === null ? (
+            <p className="text-sm text-muted-foreground">Carregando…</p>
+          ) : (
+            <MultipleChoiceRenderer
+              items={items.map((i) => ({
+                question: i.configuration.question,
+                options: i.configuration.options,
+              }))}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
