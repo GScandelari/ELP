@@ -1,27 +1,16 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { resolve } from "node:path";
 import {
   assertFails,
   assertSucceeds,
-  initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
+import { createRulesTestEnv } from "./helpers";
 
-const here = fileURLToPath(new URL(".", import.meta.url));
 let testEnv: RulesTestEnvironment;
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: "demo-elp-rules",
-    firestore: {
-      rules: readFileSync(resolve(here, "../../firestore.rules"), "utf8"),
-      host: "127.0.0.1",
-      port: 8080,
-    },
-  });
+  testEnv = await createRulesTestEnv("demo-elp-rules");
 });
 
 beforeEach(async () => {
@@ -58,8 +47,14 @@ describe("firestore.rules — smoke (ADR-005/011/012/013)", () => {
 
   it("permite ao usuário ler o próprio users/{uid} e nega o de outro", async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), "users/u1"), { name: "U", role: "teacher" });
-      await setDoc(doc(ctx.firestore(), "users/u2"), { name: "V", role: "student" });
+      await setDoc(doc(ctx.firestore(), "users/u1"), {
+        name: "U",
+        role: "teacher",
+      });
+      await setDoc(doc(ctx.firestore(), "users/u2"), {
+        name: "V",
+        role: "student",
+      });
     });
     const u1 = testEnv.authenticatedContext("u1").firestore();
     await assertSucceeds(getDoc(doc(u1, "users/u1")));
@@ -74,7 +69,9 @@ describe("firestore.rules — smoke (ADR-005/011/012/013)", () => {
   });
 
   it("nega ao cliente escrever em accounts/{id}", async () => {
-    const u = testEnv.authenticatedContext("u1", { role: "teacher" }).firestore();
+    const u = testEnv
+      .authenticatedContext("u1", { role: "teacher" })
+      .firestore();
     await assertFails(setDoc(doc(u, "accounts/u1"), { status: "ACTIVE" }));
   });
 });
