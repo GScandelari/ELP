@@ -39,7 +39,10 @@ export function ClassFormDialog({
   const [description, setDescription] = useState(initialDescription);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const titleId = `${idPrefix}-title`;
+  // "-heading", nao "-title": ClassNameDescriptionFields usa o mesmo
+  // idPrefix e um dia pode ganhar um campo "title" - colisao de id quebra
+  // o label (achado depurando ActivityMetaFields/EditActivityDialog).
+  const titleId = `${idPrefix}-heading`;
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

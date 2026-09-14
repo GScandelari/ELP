@@ -222,6 +222,37 @@ describe("firestore.rules — activities (Fase 3)", () => {
     );
   });
 
+  it("5b. professor não cria atividade já READY/LOCKED (só DRAFT)", async () => {
+    await assertFails(
+      setDoc(doc(teacher(), "activities/nova2"), {
+        accountId: TEACHER,
+        title: "Nova",
+        type: "MULTIPLE_CHOICE",
+        status: "READY",
+        locked: false,
+      }),
+    );
+  });
+
+  it("5c. professor não muda o status para LOCKED direto (só a Cloud Function, RN-013)", async () => {
+    await assertFails(
+      updateDoc(doc(teacher(), `activities/${ACTIVITY_ID}`), {
+        status: "LOCKED",
+      }),
+    );
+  });
+
+  it("5d. professor não muda locked nem accountId por escrita direta", async () => {
+    await assertFails(
+      updateDoc(doc(teacher(), `activities/${ACTIVITY_ID}`), { locked: true }),
+    );
+    await assertFails(
+      updateDoc(doc(teacher(), `activities/${ACTIVITY_ID}`), {
+        accountId: OTHER_TEACHER,
+      }),
+    );
+  });
+
   it("6. professor lista os itens da própria atividade (regressão list)", async () => {
     const snap = await assertSucceeds(
       getDocs(

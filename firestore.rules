@@ -141,12 +141,19 @@ service cloud.firestore {
     // ---- repositorio de atividades do professor (ADR-012 / ADR-014) ----
     match /activities/{activityId} {
       allow read: if hasRole('teacher') && resource.data.accountId == request.auth.uid;
+      // status so pode nascer/ficar em DRAFT|READY|ARCHIVED por escrita direta -
+      // LOCKED e' setado so pela Cloud Function (createAttempt, Fase 4, RN-013);
+      // accountId/locked travados fora da criacao (fix: nao eram travados antes)
       allow create: if hasRole('teacher')
         && request.resource.data.accountId == request.auth.uid
-        && request.resource.data.get('locked', false) == false;
+        && request.resource.data.get('locked', false) == false
+        && request.resource.data.status == 'DRAFT';
       allow update: if hasRole('teacher')
         && resource.data.accountId == request.auth.uid
-        && resource.data.get('locked', false) == false; // LOCKED e imutavel (ADR-014)
+        && resource.data.get('locked', false) == false // LOCKED e imutavel (ADR-014)
+        && request.resource.data.accountId == resource.data.accountId
+        && request.resource.data.get('locked', false) == false
+        && request.resource.data.status in ['DRAFT', 'READY', 'ARCHIVED'];
       allow delete: if hasRole('teacher')
         && resource.data.accountId == request.auth.uid
         && resource.data.get('locked', false) == false; // fix: delete nao checava o lock

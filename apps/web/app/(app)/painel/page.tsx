@@ -16,9 +16,19 @@ export default function PainelPage() {
       </p>
 
       {(role === "teacher" || role === "student") && (
-        <Link href="/salas" className={buttonClassName({ className: "mt-4" })}>
-          Minhas salas
-        </Link>
+        <div className="mt-4 flex gap-2">
+          <Link href="/salas" className={buttonClassName()}>
+            Minhas salas
+          </Link>
+          {role === "teacher" && (
+            <Link
+              href="/atividades"
+              className={buttonClassName({ variant: "outline" })}
+            >
+              Minhas atividades
+            </Link>
+          )}
+        </div>
       )}
 
       <dl className="mt-6 space-y-1 text-sm">
