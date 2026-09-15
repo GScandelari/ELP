@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
   addChoiceItem,
+  assignActivityToClasses,
   createActivity,
+  createClass,
   publishActivity,
   registerTeacher,
   uniqueEmail,
@@ -16,12 +18,7 @@ test("professor: clona uma atividade e substitui a atribuição numa sala sem te
   await registerTeacher(page, uniqueEmail("prof"));
 
   // cria uma sala
-  await page.getByRole("link", { name: "Minhas salas" }).click();
-  await page.getByRole("button", { name: "Criar sala" }).click();
-  const classDialog = page.getByRole("dialog");
-  await classDialog.getByLabel("Nome").fill("Inglês 6º ano");
-  await classDialog.getByRole("button", { name: "Criar sala" }).click();
-  await expect(page).toHaveURL(/\/salas\/[^/]+$/);
+  await createClass(page, "Inglês 6º ano");
 
   // cria a atividade original, com um item, marca pronta e atribui à sala
   await page.getByRole("link", { name: "ELP" }).click();
@@ -38,11 +35,7 @@ test("professor: clona uma atividade e substitui a atribuição numa sala sem te
     "2",
   );
   await publishActivity(page);
-  await page.getByRole("button", { name: "Atribuir a sala(s)" }).click();
-  const publishDialog = page.getByRole("dialog");
-  await publishDialog.getByLabel("Inglês 6º ano").check();
-  await publishDialog.getByRole("button", { name: "Atribuir" }).click();
-  await expect(publishDialog).toBeHidden();
+  await assignActivityToClasses(page, ["Inglês 6º ano"]);
 
   // clona a atividade — a cópia já vem com o item, título "(v2)"
   await page.getByRole("button", { name: "Clonar" }).click();

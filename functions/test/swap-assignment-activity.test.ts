@@ -7,6 +7,7 @@ import {
   initTestApp,
   wrapCallable,
 } from "./helpers";
+import { seedActivity, seedClass, seedItem } from "./activity-fixtures";
 
 type Payload = {
   classId?: unknown;
@@ -30,54 +31,27 @@ beforeEach(() => clearFirestoreEmulator());
 const TEACHER = { uid: "prof-1", token: { role: "teacher" } };
 const OTHER_TEACHER = { uid: "prof-2", token: { role: "teacher" } };
 
-async function seedClass(id: string, accountId: string) {
-  await db.doc(`classes/${id}`).set({
-    accountId,
-    name: "Inglês 6º ano",
-    description: "",
-    enrollmentCode: "ABC123",
-    status: "ACTIVE",
-    studentCount: 0,
-  });
-}
-
-async function seedActivity(
-  id: string,
-  accountId: string,
-  overrides: Record<string, unknown> = {},
-) {
-  await db.doc(`activities/${id}`).set({
-    accountId,
-    title: "Capitais (v2)",
-    description: "",
-    type: "MULTIPLE_CHOICE",
-    difficulty: "EASY",
-    tags: [],
-    status: "READY",
-    locked: false,
-    itemCount: 1,
-    ...overrides,
-  });
-}
-
-const VALID_MC_CONFIG = {
+const VALID_DE_CONFIG = {
   question: "Qual é a capital da Alemanha?",
   options: ["Berlim", "Munique"],
   correctIndex: 0,
 };
 
-async function seedItem(
-  activityId: string,
-  itemId: string,
+async function seedNewVersionActivity(
+  id: string,
   accountId: string,
-  configuration: Record<string, unknown> = VALID_MC_CONFIG,
+  activityOverrides: Record<string, unknown> = {},
+  itemOptions: Parameters<typeof seedItem>[4] = {},
 ) {
-  await db.doc(`activities/${activityId}/items/${itemId}`).set({
-    accountId,
-    position: 0,
-    prompt: "Qual é a capital da Alemanha?",
-    configuration,
+  await seedActivity(db, id, accountId, {
+    title: "Capitais (v2)",
+    ...activityOverrides,
+  });
+  await seedItem(db, id, "i1", accountId, {
+    configuration: VALID_DE_CONFIG,
+    prompt: VALID_DE_CONFIG.question,
     points: 3,
+    ...itemOptions,
   });
 }
 
@@ -133,9 +107,8 @@ describe("swapAssignmentActivity (integração)", () => {
   });
 
   it("rejeita sala, atribuição ou atividade de origem inexistente", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a2", TEACHER.uid);
-    await seedItem("a2", "i1", TEACHER.uid);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedNewVersionActivity("a2", TEACHER.uid);
     await seedAssignment("c1", "asg1", TEACHER.uid);
 
     await expect(
@@ -159,9 +132,8 @@ describe("swapAssignmentActivity (integração)", () => {
   });
 
   it("rejeita sala/atribuição/origem de outro professor", async () => {
-    await seedClass("c1", OTHER_TEACHER.uid);
-    await seedActivity("a2", TEACHER.uid);
-    await seedItem("a2", "i1", TEACHER.uid);
+    await seedClass(db, "c1", OTHER_TEACHER.uid);
+    await seedNewVersionActivity("a2", TEACHER.uid);
     await seedAssignment("c1", "asg1", OTHER_TEACHER.uid);
 
     await expect(
@@ -173,9 +145,8 @@ describe("swapAssignmentActivity (integração)", () => {
   });
 
   it("rejeita quando a sala já começou (startedCount > 0)", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a2", TEACHER.uid);
-    await seedItem("a2", "i1", TEACHER.uid);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedNewVersionActivity("a2", TEACHER.uid);
     await seedAssignment("c1", "asg1", TEACHER.uid, { startedCount: 1 });
 
     await expect(
@@ -187,9 +158,8 @@ describe("swapAssignmentActivity (integração)", () => {
   });
 
   it("rejeita atividade de origem que não está READY", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a2", TEACHER.uid, { status: "DRAFT" });
-    await seedItem("a2", "i1", TEACHER.uid);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedNewVersionActivity("a2", TEACHER.uid, { status: "DRAFT" });
     await seedAssignment("c1", "asg1", TEACHER.uid);
 
     await expect(
@@ -201,9 +171,8 @@ describe("swapAssignmentActivity (integração)", () => {
   });
 
   it("rejeita atividade de origem travada (defensivo)", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a2", TEACHER.uid, { locked: true });
-    await seedItem("a2", "i1", TEACHER.uid);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedNewVersionActivity("a2", TEACHER.uid, { locked: true });
     await seedAssignment("c1", "asg1", TEACHER.uid);
 
     await expect(
@@ -215,8 +184,8 @@ describe("swapAssignmentActivity (integração)", () => {
   });
 
   it("rejeita atividade de origem sem itens", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a2", TEACHER.uid);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a2", TEACHER.uid, { title: "Capitais (v2)" });
     await seedAssignment("c1", "asg1", TEACHER.uid);
 
     await expect(
@@ -228,13 +197,15 @@ describe("swapAssignmentActivity (integração)", () => {
   });
 
   it("rejeita item com configuração inválida (RN-006)", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a2", TEACHER.uid);
-    await seedItem("a2", "i1", TEACHER.uid, {
-      question: "Oi",
-      options: ["Só uma"],
-      correctIndex: 0,
-    });
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedNewVersionActivity(
+      "a2",
+      TEACHER.uid,
+      {},
+      {
+        configuration: { question: "Oi", options: ["Só uma"], correctIndex: 0 },
+      },
+    );
     await seedAssignment("c1", "asg1", TEACHER.uid);
 
     await expect(
@@ -246,10 +217,9 @@ describe("swapAssignmentActivity (integração)", () => {
   });
 
   it("re-congela contentSnapshot/gradingConfig mantendo o resto do assignment", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a1", TEACHER.uid); // versão antiga (fonte original do assignment)
-    await seedActivity("a2", TEACHER.uid); // versão nova
-    await seedItem("a2", "i1", TEACHER.uid);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid); // versão antiga (fonte original do assignment)
+    await seedNewVersionActivity("a2", TEACHER.uid); // versão nova
     await seedAssignment("c1", "asg1", TEACHER.uid);
     // índice reverso da versão antiga, que deve sumir após a troca
     await db.doc("activities/a1/assignmentRefs/c1").set({
@@ -274,11 +244,11 @@ describe("swapAssignmentActivity (integração)", () => {
     expect(assignment.contentSnapshot).toEqual([
       {
         itemId: "i1",
-        prompt: "Qual é a capital da Alemanha?",
+        prompt: VALID_DE_CONFIG.question,
         points: 3,
         content: {
-          question: VALID_MC_CONFIG.question,
-          options: VALID_MC_CONFIG.options,
+          question: VALID_DE_CONFIG.question,
+          options: VALID_DE_CONFIG.options,
         },
       },
     ]);

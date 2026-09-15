@@ -37,6 +37,37 @@ export async function login(
   await page.getByRole("button", { name: "Entrar" }).click();
 }
 
+/** Cria uma sala a partir de "Minhas salas" e cai na tela dela. */
+export async function createClass(page: Page, name: string) {
+  await page.getByRole("link", { name: "Minhas salas" }).click();
+  await page.getByRole("button", { name: "Criar sala" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Nome").fill(name);
+  await dialog.getByRole("button", { name: "Criar sala" }).click();
+  await expect(page).toHaveURL(/\/salas\/[^/]+$/);
+}
+
+/**
+ * Abre "Atribuir a sala(s)" (já na tela da atividade), marca as salas
+ * dadas pelo nome e confirma.
+ */
+export async function assignActivityToClasses(
+  page: Page,
+  classNames: string[],
+  options: { maxAttempts?: string } = {},
+) {
+  await page.getByRole("button", { name: "Atribuir a sala(s)" }).click();
+  const dialog = page.getByRole("dialog");
+  for (const className of classNames) {
+    await dialog.getByLabel(className).check();
+  }
+  if (options.maxAttempts) {
+    await dialog.getByLabel("Máximo de tentativas").fill(options.maxAttempts);
+  }
+  await dialog.getByRole("button", { name: "Atribuir" }).click();
+  await expect(dialog).toBeHidden();
+}
+
 /** Cria uma atividade a partir de "Minhas atividades" e cai na tela dela. */
 export async function createActivity(
   page: Page,

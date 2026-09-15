@@ -1,6 +1,7 @@
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { getActivityTypeHandler } from "../activity-types";
+import { freezeContent } from "./freeze-content";
 
 type Payload = {
   classId?: unknown;
@@ -125,25 +126,10 @@ export const publishAssignment = onCall(async (request) => {
 
   const activityType = activitySnap.get("type");
   const handler = getActivityTypeHandler(activityType);
-
-  const contentSnapshot: unknown[] = [];
-  const gradingConfig: unknown[] = [];
-  for (const itemDoc of itemsSnap.docs) {
-    const config = itemDoc.data().configuration;
-    handler.validate(config); // RN-006 — autoritativo, aqui e não no client
-    const points = itemDoc.data().points ?? 1;
-    contentSnapshot.push({
-      itemId: itemDoc.id,
-      prompt: itemDoc.data().prompt ?? "",
-      points,
-      content: handler.toStudentContent(config),
-    });
-    gradingConfig.push({
-      itemId: itemDoc.id,
-      points,
-      grading: handler.toGradingConfig(config),
-    });
-  }
+  const { contentSnapshot, gradingConfig } = freezeContent(
+    handler,
+    itemsSnap.docs,
+  );
 
   const existingAssignmentsSnap = await classRef
     .collection("assignments")
