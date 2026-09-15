@@ -39,6 +39,12 @@ beforeEach(() => clearFirestoreEmulator());
 const TEACHER = { uid: "prof-1", token: { role: "teacher" } };
 const OTHER_TEACHER = { uid: "prof-2", token: { role: "teacher" } };
 
+async function setup() {
+  await seedClass(db, "c1", TEACHER.uid);
+  await seedActivity(db, "a1", TEACHER.uid);
+  await seedItem(db, "a1", "i1", TEACHER.uid);
+}
+
 describe("publishAssignment (integração)", () => {
   it("rejeita chamada sem autenticação", async () => {
     await expect(
@@ -101,9 +107,7 @@ describe("publishAssignment (integração)", () => {
   });
 
   it("rejeita resultsPolicy inválida", async () => {
-    await seedClass(db, "c1", TEACHER.uid);
-    await seedActivity(db, "a1", TEACHER.uid);
-    await seedItem(db, "a1", "i1", TEACHER.uid);
+    await setup();
 
     await expect(
       call(
@@ -114,9 +118,7 @@ describe("publishAssignment (integração)", () => {
   });
 
   it("rejeita ON_DUE_DATE sem dueDate (ADR-013 §2)", async () => {
-    await seedClass(db, "c1", TEACHER.uid);
-    await seedActivity(db, "a1", TEACHER.uid);
-    await seedItem(db, "a1", "i1", TEACHER.uid);
+    await setup();
 
     await expect(
       call(
@@ -127,9 +129,7 @@ describe("publishAssignment (integração)", () => {
   });
 
   it("aceita resultsPolicy explícita (ON_CLOSE) e grava no assignment", async () => {
-    await seedClass(db, "c1", TEACHER.uid);
-    await seedActivity(db, "a1", TEACHER.uid);
-    await seedItem(db, "a1", "i1", TEACHER.uid);
+    await setup();
 
     const res = await call(
       { classId: "c1", activityId: "a1", resultsPolicy: "ON_CLOSE" },

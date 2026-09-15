@@ -2,6 +2,7 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { getActivityTypeHandler } from "../activity-types";
 import { freezeContent } from "./freeze-content";
+import { loadOwnedAssignment } from "./load-owned-assignment";
 
 type Payload = {
   classId?: unknown;
@@ -44,29 +45,13 @@ export const swapAssignmentActivity = onCall(async (request) => {
   const uid = request.auth.uid;
   const db = getFirestore();
 
-  const classRef = db.doc(`classes/${classId}`);
-  const assignmentRef = classRef.collection("assignments").doc(assignmentId);
+  const { classSnap, assignmentRef, assignmentSnap } =
+    await loadOwnedAssignment(db, classId, assignmentId, uid);
   const sourceActivityRef = db.doc(`activities/${sourceActivityId}`);
-  const [classSnap, assignmentSnap, sourceActivitySnap] = await Promise.all([
-    classRef.get(),
-    assignmentRef.get(),
-    sourceActivityRef.get(),
-  ]);
+  const sourceActivitySnap = await sourceActivityRef.get();
 
-  if (!classSnap.exists) {
-    throw new HttpsError("not-found", "Sala não encontrada.");
-  }
-  if (!assignmentSnap.exists) {
-    throw new HttpsError("not-found", "Atribuição não encontrada.");
-  }
   if (!sourceActivitySnap.exists) {
     throw new HttpsError("not-found", "Atividade de origem não encontrada.");
-  }
-  if (classSnap.get("accountId") !== uid) {
-    throw new HttpsError("permission-denied", "Esta sala não é sua.");
-  }
-  if (assignmentSnap.get("accountId") !== uid) {
-    throw new HttpsError("permission-denied", "Esta atribuição não é sua.");
   }
   if (sourceActivitySnap.get("accountId") !== uid) {
     throw new HttpsError(

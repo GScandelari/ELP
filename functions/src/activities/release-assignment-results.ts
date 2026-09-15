@@ -1,5 +1,6 @@
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { loadOwnedAssignment } from "./load-owned-assignment";
 
 type Payload = {
   classId?: unknown;
@@ -33,25 +34,12 @@ export const releaseAssignmentResults = onCall(async (request) => {
   const uid = request.auth.uid;
   const db = getFirestore();
 
-  const classRef = db.doc(`classes/${classId}`);
-  const assignmentRef = classRef.collection("assignments").doc(assignmentId);
-  const [classSnap, assignmentSnap] = await Promise.all([
-    classRef.get(),
-    assignmentRef.get(),
-  ]);
-
-  if (!classSnap.exists) {
-    throw new HttpsError("not-found", "Sala não encontrada.");
-  }
-  if (!assignmentSnap.exists) {
-    throw new HttpsError("not-found", "Atribuição não encontrada.");
-  }
-  if (classSnap.get("accountId") !== uid) {
-    throw new HttpsError("permission-denied", "Esta sala não é sua.");
-  }
-  if (assignmentSnap.get("accountId") !== uid) {
-    throw new HttpsError("permission-denied", "Esta atribuição não é sua.");
-  }
+  const { assignmentRef } = await loadOwnedAssignment(
+    db,
+    classId,
+    assignmentId,
+    uid,
+  );
 
   await assignmentRef.update({
     resultsReleased: true,
