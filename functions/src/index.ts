@@ -14,6 +14,7 @@ export { rotateEnrollmentCode } from "./classes/rotate-enrollment-code";
 export { publishAssignment } from "./activities/publish-assignment";
 export { cloneActivity } from "./activities/clone-activity";
 export { swapAssignmentActivity } from "./activities/swap-assignment-activity";
+export { createAttempt } from "./attempts/create-attempt";
 
 /*
  * -------------------------------------------------------------------------
@@ -24,7 +25,6 @@ export { swapAssignmentActivity } from "./activities/swap-assignment-activity";
  * activities/
  *   releaseAssignmentResults liberação de resultados aos alunos (ADR-013)
  * attempts/
- *   createAttempt            RN-005 / RN-007; transação: startedCount + lock (ADR-014)
  *   submitAttempt            lê assignmentKeys, calcula score (RN-008), status GRADED
  * privacy/
  *   exportUserData / deleteUserData / purgeExpiredData (ADR-011)
