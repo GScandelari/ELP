@@ -98,6 +98,49 @@ export function watchClassAssignments(
 }
 
 /**
+ * Observa os assignments `PUBLISHED`/`CLOSED` de uma sala, do lado do
+ * aluno (portal do aluno, Fase 4) — `where('status', 'in', [...])` é o
+ * que prova a regra de `list` pro aluno (docs/plano-fase-4.md §6.3,
+ * pendência registrada pela própria Fase 3).
+ */
+export function watchStudentClassAssignments(
+  classId: string,
+  onChange: (assignments: AssignmentSummary[]) => void,
+): Unsubscribe {
+  const { db } = getFirebase();
+  const q = query(
+    collection(db, "classes", classId, "assignments"),
+    where("status", "in", ["PUBLISHED", "CLOSED"]),
+    orderBy("position", "asc"),
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      onChange(
+        snap.docs
+          .map((d) => mapAssignment(d.id, d.data()))
+          .filter((a): a is AssignmentSummary => a !== null),
+      );
+    },
+    () => onChange([]),
+  );
+}
+
+/** Observa um assignment específico (`get`) — professor dono ou aluno inscrito. */
+export function watchAssignment(
+  classId: string,
+  assignmentId: string,
+  onChange: (assignment: AssignmentSummary | null) => void,
+): Unsubscribe {
+  const { db } = getFirebase();
+  return onSnapshot(
+    doc(db, "classes", classId, "assignments", assignmentId),
+    (snap) => onChange(mapAssignment(snap.id, snap.data())),
+    () => onChange(null),
+  );
+}
+
+/**
  * Encerra um assignment `PUBLISHED` (RF-011) — escrita direta, a rule já
  * permite ao dono da sala mudar `status` mantendo `accountId`/`activityId`/
  * `contentSnapshot` (docs/plano-fase-3.md §6). Sem volta: RF-011 descreve

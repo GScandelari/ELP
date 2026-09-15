@@ -3,19 +3,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AssignmentContentPreview } from "@/components/assignment-content-preview";
+import { ACTIVITY_TYPE_LABEL } from "@/lib/activities";
 import {
   closeAssignment,
   releaseAssignmentResults,
   releaseAssignmentResultsErrorMessage,
   type AssignmentSummary,
 } from "@/lib/assignments";
-
-const TYPE_LABEL: Record<AssignmentSummary["type"], string> = {
-  MULTIPLE_CHOICE: "Múltipla escolha",
-  FILL_IN_BLANKS: "Preencher espaços",
-  TRANSLATION: "Tradução/localização",
-  MEANING_MATCHING: "Relacionamento de significados",
-};
 
 const STATUS_LABEL: Record<AssignmentSummary["status"], string> = {
   PUBLISHED: "Publicada",
@@ -100,8 +94,8 @@ function AssignmentListItem({
         <div>
           <p className="font-medium">{assignment.activityTitle}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {TYPE_LABEL[assignment.type]} · {formatDueDate(assignment.dueDate)}{" "}
-            · {assignment.maxAttempts}{" "}
+            {ACTIVITY_TYPE_LABEL[assignment.type]} ·{" "}
+            {formatDueDate(assignment.dueDate)} · {assignment.maxAttempts}{" "}
             {assignment.maxAttempts === 1 ? "tentativa" : "tentativas"}
             {assignment.allowRetry ? " (com nova tentativa)" : ""}
             {assignment.resultsReleased ? " · resultados liberados" : ""}

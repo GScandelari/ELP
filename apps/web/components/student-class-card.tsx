@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { MyClassSummary } from "@/lib/classes";
 
 const STATUS_LABEL: Record<MyClassSummary["status"], string> = {
@@ -8,7 +9,10 @@ const STATUS_LABEL: Record<MyClassSummary["status"], string> = {
 
 export function StudentClassCard({ klass }: { klass: MyClassSummary }) {
   return (
-    <div className="rounded-lg border border-border p-4">
+    <Link
+      href={`/salas/${klass.classId}`}
+      className="block rounded-lg border border-border p-4 transition-colors hover:bg-muted"
+    >
       <div className="flex items-start justify-between gap-2">
         <h2 className="font-semibold">{klass.name}</h2>
         <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
@@ -20,6 +24,6 @@ export function StudentClassCard({ klass }: { klass: MyClassSummary }) {
           {klass.description}
         </p>
       )}
-    </div>
+    </Link>
   );
 }

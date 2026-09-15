@@ -14,14 +14,15 @@ import {
 } from "@/lib/classes";
 import {
   watchClassAssignments,
+  watchStudentClassAssignments,
   type AssignmentSummary,
 } from "@/lib/assignments";
-import { RequireRole } from "@/components/require-role";
 import { EnrollmentCodeBadge } from "@/components/enrollment-code-badge";
 import { AddStudentDialog } from "@/components/add-student-dialog";
 import { EditClassDialog } from "@/components/edit-class-dialog";
 import { StudentRoster } from "@/components/student-roster";
 import { AssignmentList } from "@/components/assignment-list";
+import { StudentAssignmentList } from "@/components/student-assignment-list";
 import { Button } from "@/components/ui/button";
 
 const STATUS_LABEL: Record<ClassSummary["status"], string> = {
@@ -30,15 +31,19 @@ const STATUS_LABEL: Record<ClassSummary["status"], string> = {
   ARCHIVED: "Arquivada",
 };
 
+/**
+ * Uma única rota para os dois papéis (professor dono, aluno inscrito) —
+ * as regras já os distinguem no próprio `get` da sala (Fase 2). A tela
+ * do aluno é nova nesta fase (a Fase 2 só entregou a lista "minhas
+ * salas"; nada linkava pra dentro de uma sala ainda).
+ */
 export default function ClassDetailPage() {
-  return (
-    <RequireRole role="teacher">
-      <ClassDetail />
-    </RequireRole>
-  );
+  const { role } = useAuth();
+  if (role === "student") return <StudentClassDetail />;
+  return <TeacherClassDetail />;
 }
 
-function ClassDetail() {
+function TeacherClassDetail() {
   const params = useParams<{ classId: string }>();
   const { user } = useAuth();
   const [klass, setKlass] = useState<ClassSummary | null>(null);
@@ -243,5 +248,70 @@ function RotateCodeButton({ classId }: { classId: string }) {
     <Button size="sm" variant="outline" disabled={busy} onClick={onClick}>
       {busy ? "Gerando…" : "Gerar novo código"}
     </Button>
+  );
+}
+
+/** Sala do lado do aluno (Fase 4): nome/descrição + atividades atribuídas. */
+function StudentClassDetail() {
+  const params = useParams<{ classId: string }>();
+  const [klass, setKlass] = useState<ClassSummary | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [assignments, setAssignments] = useState<AssignmentSummary[]>([]);
+
+  useEffect(
+    () =>
+      watchClass(params.classId, (c) => {
+        setKlass(c);
+        setLoaded(true);
+      }),
+    [params.classId],
+  );
+
+  useEffect(
+    () => watchStudentClassAssignments(params.classId, setAssignments),
+    [params.classId],
+  );
+
+  if (!loaded) {
+    return <p className="text-sm text-muted-foreground">Carregando…</p>;
+  }
+
+  if (!klass) {
+    return (
+      <div>
+        <p className="text-sm text-muted-foreground">
+          Sala não encontrada.{" "}
+          <Link href="/salas" className="underline">
+            Voltar para Minhas salas
+          </Link>
+          .
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <Link href="/salas" className="text-sm text-muted-foreground underline">
+        ← Minhas salas
+      </Link>
+
+      <h1 className="mt-2 text-2xl font-bold">{klass.name}</h1>
+      {klass.description && (
+        <p className="mt-1 text-sm text-muted-foreground">
+          {klass.description}
+        </p>
+      )}
+
+      <div className="mt-6 rounded-lg border border-border p-4">
+        <h2 className="text-sm font-medium text-muted-foreground">
+          Atividades ({assignments.length})
+        </h2>
+        <StudentAssignmentList
+          classId={params.classId}
+          assignments={assignments}
+        />
+      </div>
+    </div>
   );
 }
