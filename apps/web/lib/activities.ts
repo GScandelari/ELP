@@ -1,6 +1,7 @@
 "use client";
 
 import { FirebaseError } from "firebase/app";
+import { httpsCallable } from "firebase/functions";
 import {
   addDoc,
   collection,
@@ -38,6 +39,8 @@ export type ActivitySummary = {
   status: ActivityStatus;
   locked: boolean;
   itemCount: number;
+  /** Id da atividade de origem, se esta for um clone (ADR-014 §3). */
+  clonedFrom: string | null;
 };
 
 function mapActivity(
@@ -55,6 +58,7 @@ function mapActivity(
     status: data.status ?? "DRAFT",
     locked: data.locked ?? false,
     itemCount: data.itemCount ?? 0,
+    clonedFrom: data.clonedFrom ?? null,
   };
 }
 
@@ -164,4 +168,37 @@ export function activityErrorMessage(err: unknown): string {
     return "Esta atividade não pode mais ser editada (já foi iniciada por um aluno).";
   }
   return "Não foi possível salvar. Tente novamente.";
+}
+
+export type CloneActivityResult = { activityId: string };
+
+/**
+ * Duplica uma atividade + todos os itens, via callable `cloneActivity`
+ * (RF-022, ADR-014 §3/§7). Disponível em qualquer atividade, travada ou
+ * não. O título da cópia ("{título} (vN)") é calculado no servidor.
+ */
+export async function cloneActivity(
+  activityId: string,
+): Promise<CloneActivityResult> {
+  const { functions } = getFirebase();
+  const fn = httpsCallable<{ activityId: string }, CloneActivityResult>(
+    functions,
+    "cloneActivity",
+  );
+  const res = await fn({ activityId });
+  return res.data;
+}
+
+export function cloneActivityErrorMessage(err: unknown): string {
+  if (err instanceof FirebaseError) {
+    switch (err.code) {
+      case "functions/permission-denied":
+        return "Apenas professores podem clonar atividades.";
+      case "functions/not-found":
+        return "Atividade não encontrada.";
+      default:
+        return "Não foi possível clonar a atividade. Tente novamente.";
+    }
+  }
+  return "Não foi possível clonar a atividade. Tente novamente.";
 }

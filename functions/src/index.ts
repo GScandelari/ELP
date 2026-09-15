@@ -12,6 +12,8 @@ export { addStudentToClass } from "./classes/add-student-to-class";
 export { removeStudentFromClass } from "./classes/remove-student-from-class";
 export { rotateEnrollmentCode } from "./classes/rotate-enrollment-code";
 export { publishAssignment } from "./activities/publish-assignment";
+export { cloneActivity } from "./activities/clone-activity";
+export { swapAssignmentActivity } from "./activities/swap-assignment-activity";
 
 /*
  * -------------------------------------------------------------------------
@@ -20,8 +22,6 @@ export { publishAssignment } from "./activities/publish-assignment";
  * auth/
  *   recordConsent            (embutido em finalizeSignup por enquanto)
  * activities/
- *   cloneActivity            duplica atividade + itens (ADR-014)
- *   swapAssignmentActivity   troca a atividade de um assignment com startedCount == 0
  *   releaseAssignmentResults liberação de resultados aos alunos (ADR-013)
  * attempts/
  *   createAttempt            RN-005 / RN-007; transação: startedCount + lock (ADR-014)

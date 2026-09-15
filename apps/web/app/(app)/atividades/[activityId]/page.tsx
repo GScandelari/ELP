@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import type { Unsubscribe } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
 import {
+  cloneActivity,
+  cloneActivityErrorMessage,
   setActivityStatus,
   watchActivity,
   type ActivitySummary,
@@ -19,6 +21,7 @@ import { shuffled } from "@/lib/shuffle";
 import { RequireRole } from "@/components/require-role";
 import { EditActivityDialog } from "@/components/edit-activity-dialog";
 import { PublishAssignmentDialog } from "@/components/publish-assignment-dialog";
+import { ApplyVersionDialog } from "@/components/apply-version-dialog";
 import { MultipleChoiceBuilder } from "@/components/multiple-choice-builder";
 import { MultipleChoiceRenderer } from "@/components/multiple-choice-renderer";
 import { FillInBlanksBuilder } from "@/components/fill-in-blanks-builder";
@@ -84,11 +87,27 @@ export default function ActivityDetailPage() {
 
 function ActivityDetail() {
   const params = useParams<{ activityId: string }>();
+  const router = useRouter();
   const { user } = useAuth();
   const [activity, setActivity] = useState<ActivitySummary | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [applyVersionOpen, setApplyVersionOpen] = useState(false);
+  const [cloneBusy, setCloneBusy] = useState(false);
+  const [cloneError, setCloneError] = useState<string | null>(null);
+
+  async function handleClone() {
+    setCloneBusy(true);
+    setCloneError(null);
+    try {
+      const { activityId } = await cloneActivity(params.activityId);
+      router.push(`/atividades/${activityId}`);
+    } catch (err) {
+      setCloneError(cloneActivityErrorMessage(err));
+      setCloneBusy(false);
+    }
+  }
 
   useEffect(
     () =>
@@ -139,6 +158,18 @@ function ActivityDetail() {
           <p className="mt-1 text-sm text-muted-foreground">
             {TYPE_LABEL[activity.type]}
           </p>
+          {activity.clonedFrom && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Clonada de{" "}
+              <Link
+                href={`/atividades/${activity.clonedFrom}`}
+                className="underline"
+              >
+                outra atividade
+              </Link>
+              .
+            </p>
+          )}
         </div>
         <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
           {STATUS_LABEL[activity.status]}
@@ -146,14 +177,20 @@ function ActivityDetail() {
       </div>
 
       {activity.locked ? (
-        <p
-          role="status"
-          className="mt-3 rounded-md border border-border bg-muted p-3 text-sm"
-        >
-          Esta atividade já foi iniciada por um aluno e não pode mais ser
-          editada. Para corrigir, clone-a — essa ação chega numa próxima PR da
-          Fase 3.
-        </p>
+        <div className="mt-3">
+          <p
+            role="status"
+            className="rounded-md border border-border bg-muted p-3 text-sm"
+          >
+            Esta atividade já foi iniciada por um aluno e não pode mais ser
+            editada. Para corrigir, clone-a e edite a cópia.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button size="sm" disabled={cloneBusy} onClick={handleClone}>
+              {cloneBusy ? "Clonando…" : "Clonar"}
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
@@ -165,7 +202,29 @@ function ActivityDetail() {
               Atribuir a sala(s)
             </Button>
           )}
+          {activity.status === "READY" && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setApplyVersionOpen(true)}
+            >
+              Aplicar esta versão
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={cloneBusy}
+            onClick={handleClone}
+          >
+            {cloneBusy ? "Clonando…" : "Clonar"}
+          </Button>
         </div>
+      )}
+      {cloneError && (
+        <p role="alert" className="mt-2 text-sm text-red-600">
+          {cloneError}
+        </p>
       )}
 
       <div className="mt-6 rounded-lg border border-border p-4">
@@ -207,6 +266,12 @@ function ActivityDetail() {
         activityId={params.activityId}
         open={publishOpen}
         onClose={() => setPublishOpen(false)}
+      />
+      <ApplyVersionDialog
+        activityId={params.activityId}
+        clonedFrom={activity.clonedFrom}
+        open={applyVersionOpen}
+        onClose={() => setApplyVersionOpen(false)}
       />
     </div>
   );
