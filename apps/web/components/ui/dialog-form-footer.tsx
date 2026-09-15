@@ -5,10 +5,15 @@ export function DialogFormFooter({
   error,
   busy,
   onCancel,
+  submitLabel = "Salvar",
+  busyLabel = "Salvando…",
 }: {
   error: string | null;
   busy: boolean;
   onCancel: () => void;
+  /** Personaliza o texto do botão principal (ex.: "Atribuir"/"Atribuindo…"). */
+  submitLabel?: string;
+  busyLabel?: string;
 }) {
   return (
     <>
@@ -28,7 +33,7 @@ export function DialogFormFooter({
           Cancelar
         </Button>
         <Button type="submit" disabled={busy}>
-          {busy ? "Salvando…" : "Salvar"}
+          {busy ? busyLabel : submitLabel}
         </Button>
       </div>
     </>
