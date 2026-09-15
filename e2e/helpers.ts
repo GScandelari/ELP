@@ -65,6 +65,33 @@ export async function showStudentPreview(page: Page) {
     .click();
 }
 
+/**
+ * Adiciona um item de um tipo "escolha a alternativa certa" (Multiple
+ * Choice, Translation): abre o diálogo, preenche os campos na ordem
+ * dada, marca a alternativa certa, opcionalmente ajusta os pontos e
+ * salva. `fields` inclui o campo de topo (enunciado/frase) e as
+ * alternativas.
+ */
+export async function addChoiceItem(
+  page: Page,
+  addButtonName: string,
+  fields: { label: string; value: string }[],
+  correctLabel: string,
+  points?: string,
+) {
+  await page.getByRole("button", { name: addButtonName }).click();
+  const itemDialog = page.getByRole("dialog");
+  for (const field of fields) {
+    await itemDialog.getByLabel(field.label, { exact: true }).fill(field.value);
+  }
+  await itemDialog.getByLabel(correctLabel).check();
+  if (points) {
+    await itemDialog.getByLabel("Pontos").fill(points);
+  }
+  await itemDialog.getByRole("button", { name: "Salvar" }).click();
+  await expect(itemDialog).toBeHidden();
+}
+
 export async function registerStudent(page: Page, email: string) {
   await page.goto("/cadastro");
   await page.getByRole("button", { name: "Aluno" }).click();

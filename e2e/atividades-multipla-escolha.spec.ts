@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  addChoiceItem,
   createActivity,
   publishActivity,
   registerTeacher,
@@ -17,15 +18,17 @@ test("professor: monta uma atividade de múltipla escolha (Activity Engine, RF-0
   await createActivity(page, "Múltipla escolha", "Capitais");
 
   // primeira questão
-  await page.getByRole("button", { name: "Adicionar questão" }).click();
-  let itemDialog = page.getByRole("dialog");
-  await itemDialog.getByLabel("Enunciado").fill("Qual é a capital da França?");
-  await itemDialog.getByLabel("Alternativa 1", { exact: true }).fill("Londres");
-  await itemDialog.getByLabel("Alternativa 2", { exact: true }).fill("Paris");
-  await itemDialog.getByLabel("Alternativa 2 é a correta").check();
-  await itemDialog.getByLabel("Pontos").fill("2");
-  await itemDialog.getByRole("button", { name: "Salvar" }).click();
-  await expect(itemDialog).toBeHidden();
+  await addChoiceItem(
+    page,
+    "Adicionar questão",
+    [
+      { label: "Enunciado", value: "Qual é a capital da França?" },
+      { label: "Alternativa 1", value: "Londres" },
+      { label: "Alternativa 2", value: "Paris" },
+    ],
+    "Alternativa 2 é a correta",
+    "2",
+  );
 
   await expect(page.getByText("Itens (1)")).toBeVisible();
   await expect(page.getByText("Qual é a capital da França?")).toBeVisible();
@@ -36,14 +39,16 @@ test("professor: monta uma atividade de múltipla escolha (Activity Engine, RF-0
   await publishActivity(page);
 
   // segunda questão
-  await page.getByRole("button", { name: "Adicionar questão" }).click();
-  itemDialog = page.getByRole("dialog");
-  await itemDialog.getByLabel("Enunciado").fill("Qual é a capital do Japão?");
-  await itemDialog.getByLabel("Alternativa 1", { exact: true }).fill("Pequim");
-  await itemDialog.getByLabel("Alternativa 2", { exact: true }).fill("Tóquio");
-  await itemDialog.getByLabel("Alternativa 2 é a correta").check();
-  await itemDialog.getByRole("button", { name: "Salvar" }).click();
-  await expect(itemDialog).toBeHidden();
+  await addChoiceItem(
+    page,
+    "Adicionar questão",
+    [
+      { label: "Enunciado", value: "Qual é a capital do Japão?" },
+      { label: "Alternativa 1", value: "Pequim" },
+      { label: "Alternativa 2", value: "Tóquio" },
+    ],
+    "Alternativa 2 é a correta",
+  );
   await expect(page.getByText("Itens (2)")).toBeVisible();
 
   // reordena: a segunda questão sobe para o primeiro lugar
@@ -69,7 +74,7 @@ test("professor: monta uma atividade de múltipla escolha (Activity Engine, RF-0
     .filter({ hasText: "Qual é a capital da França?" })
     .getByRole("button", { name: "Editar" })
     .click();
-  itemDialog = page.getByRole("dialog");
+  const itemDialog = page.getByRole("dialog");
   await itemDialog
     .getByLabel("Enunciado")
     .fill("Qual é a capital da França? (revisado)");

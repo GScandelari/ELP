@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  addChoiceItem,
   createActivity,
   publishActivity,
   registerTeacher,
@@ -20,15 +21,17 @@ test("professor: monta uma atividade de tradução/localização (Activity Engin
   await expect(page.getByText("O construtor de itens para")).toHaveCount(0);
 
   // adiciona um item no modo padrão (marcar a alternativa certa)
-  await page.getByRole("button", { name: "Adicionar item" }).click();
-  const itemDialog = page.getByRole("dialog");
-  await itemDialog.getByLabel("Palavra ou frase a traduzir").fill("casa");
-  await itemDialog.getByLabel("Opção 1", { exact: true }).fill("house");
-  await itemDialog.getByLabel("Opção 2", { exact: true }).fill("car");
-  await itemDialog.getByLabel("Opção 1 é a correta").check();
-  await itemDialog.getByLabel("Pontos").fill("2");
-  await itemDialog.getByRole("button", { name: "Salvar" }).click();
-  await expect(itemDialog).toBeHidden();
+  await addChoiceItem(
+    page,
+    "Adicionar item",
+    [
+      { label: "Palavra ou frase a traduzir", value: "casa" },
+      { label: "Opção 1", value: "house" },
+      { label: "Opção 2", value: "car" },
+    ],
+    "Opção 1 é a correta",
+    "2",
+  );
 
   await expect(page.getByText("Itens (1)")).toBeVisible();
   await expect(page.getByText("casa")).toBeVisible();
