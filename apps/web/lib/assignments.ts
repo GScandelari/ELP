@@ -19,6 +19,11 @@ import type { ActivityType } from "@/lib/activities";
 
 export type AssignmentStatus = "PUBLISHED" | "CLOSED";
 
+export type AssignmentResultsPolicy =
+  | "ON_TEACHER_RELEASE"
+  | "ON_DUE_DATE"
+  | "ON_CLOSE";
+
 export type AssignmentContentEntry<TContent = unknown> = {
   itemId: string;
   prompt: string;
@@ -37,6 +42,7 @@ export type AssignmentSummary = {
   allowRetry: boolean;
   maxAttempts: number;
   startedCount: number;
+  resultsPolicy: AssignmentResultsPolicy;
   resultsReleased: boolean;
   contentSnapshot: AssignmentContentEntry[];
 };
@@ -57,6 +63,7 @@ function mapAssignment(
     allowRetry: data.allowRetry ?? false,
     maxAttempts: data.maxAttempts ?? 1,
     startedCount: data.startedCount ?? 0,
+    resultsPolicy: data.resultsPolicy ?? "ON_TEACHER_RELEASE",
     resultsReleased: data.resultsReleased ?? false,
     contentSnapshot: data.contentSnapshot ?? [],
   };
@@ -95,15 +102,23 @@ export function watchClassAssignments(
  * permite ao dono da sala mudar `status` mantendo `accountId`/`activityId`/
  * `contentSnapshot` (docs/plano-fase-3.md §6). Sem volta: RF-011 descreve
  * só o sentido PUBLISHED → CLOSED, sem reabertura.
+ *
+ * Quando `resultsPolicy === 'ON_CLOSE'` (ADR-013 §2), o mesmo `updateDoc`
+ * já libera os resultados — sem precisar de uma Cloud Function separada
+ * só pra essa política.
  */
 export async function closeAssignment(
   classId: string,
   assignmentId: string,
+  resultsPolicy: AssignmentResultsPolicy,
 ): Promise<void> {
   const { db } = getFirebase();
   await updateDoc(doc(db, "classes", classId, "assignments", assignmentId), {
     status: "CLOSED",
     updatedAt: serverTimestamp(),
+    ...(resultsPolicy === "ON_CLOSE"
+      ? { resultsReleased: true, resultsReleasedAt: serverTimestamp() }
+      : {}),
   });
 }
 
@@ -113,6 +128,7 @@ export type PublishAssignmentInput = {
   dueDate?: string;
   maxAttempts?: number;
   allowRetry?: boolean;
+  resultsPolicy?: AssignmentResultsPolicy;
 };
 
 export type PublishAssignmentResult = { assignmentId: string };
@@ -239,4 +255,32 @@ export function swapAssignmentActivityErrorMessage(err: unknown): string {
     }
   }
   return "Não foi possível aplicar esta versão. Tente novamente.";
+}
+
+/** Libera os resultados de um assignment para os alunos (RF-017, ADR-013). */
+export async function releaseAssignmentResults(
+  classId: string,
+  assignmentId: string,
+): Promise<{ ok: boolean }> {
+  const { functions } = getFirebase();
+  const fn = httpsCallable<
+    { classId: string; assignmentId: string },
+    { ok: boolean }
+  >(functions, "releaseAssignmentResults");
+  const res = await fn({ classId, assignmentId });
+  return res.data;
+}
+
+export function releaseAssignmentResultsErrorMessage(err: unknown): string {
+  if (err instanceof FirebaseError) {
+    switch (err.code) {
+      case "functions/permission-denied":
+        return "Apenas professores podem liberar resultados.";
+      case "functions/not-found":
+        return "Sala ou atribuição não encontrada.";
+      default:
+        return "Não foi possível liberar os resultados. Tente novamente.";
+    }
+  }
+  return "Não foi possível liberar os resultados. Tente novamente.";
 }

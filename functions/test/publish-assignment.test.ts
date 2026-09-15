@@ -39,6 +39,12 @@ beforeEach(() => clearFirestoreEmulator());
 const TEACHER = { uid: "prof-1", token: { role: "teacher" } };
 const OTHER_TEACHER = { uid: "prof-2", token: { role: "teacher" } };
 
+async function setup() {
+  await seedClass(db, "c1", TEACHER.uid);
+  await seedActivity(db, "a1", TEACHER.uid);
+  await seedItem(db, "a1", "i1", TEACHER.uid);
+}
+
 describe("publishAssignment (integração)", () => {
   it("rejeita chamada sem autenticação", async () => {
     await expect(
@@ -98,6 +104,41 @@ describe("publishAssignment (integração)", () => {
     await expect(
       call({ classId: "c1", activityId: "nao-existe" }, TEACHER),
     ).rejects.toMatchObject({ code: "not-found" });
+  });
+
+  it("rejeita resultsPolicy inválida", async () => {
+    await setup();
+
+    await expect(
+      call(
+        { classId: "c1", activityId: "a1", resultsPolicy: "QUALQUER_COISA" },
+        TEACHER,
+      ),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+  });
+
+  it("rejeita ON_DUE_DATE sem dueDate (ADR-013 §2)", async () => {
+    await setup();
+
+    await expect(
+      call(
+        { classId: "c1", activityId: "a1", resultsPolicy: "ON_DUE_DATE" },
+        TEACHER,
+      ),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+  });
+
+  it("aceita resultsPolicy explícita (ON_CLOSE) e grava no assignment", async () => {
+    await setup();
+
+    const res = await call(
+      { classId: "c1", activityId: "a1", resultsPolicy: "ON_CLOSE" },
+      TEACHER,
+    );
+    const snap = await db
+      .doc(`classes/c1/assignments/${res.assignmentId}`)
+      .get();
+    expect(snap.get("resultsPolicy")).toBe("ON_CLOSE");
   });
 
   it("rejeita sala inexistente", async () => {

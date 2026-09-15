@@ -9,9 +9,12 @@ type Payload = {
   dueDate?: unknown;
   maxAttempts?: unknown;
   allowRetry?: unknown;
+  resultsPolicy?: unknown;
 };
 
 const MAX_ATTEMPTS_CAP = 20;
+
+const RESULTS_POLICIES = ["ON_TEACHER_RELEASE", "ON_DUE_DATE", "ON_CLOSE"];
 
 /**
  * Atribui uma atividade `READY` a uma sala (RF-011, RN-006, RN-012, UC-005).
@@ -22,10 +25,9 @@ const MAX_ATTEMPTS_CAP = 20;
  * chamada de novo para outra sala com a mesma atividade (RN-012) — cada
  * chamada gera um `assignmentId` novo.
  *
- * `resultsPolicy` nasce fixo em `ON_TEACHER_RELEASE`: nenhuma das 3
- * políticas tem efeito observável antes da Fase 4 (liberação de
- * resultados), então não há UI pra escolher ainda — só o campo, pronto
- * pra quando existir.
+ * `resultsPolicy` (ADR-013 §2) — default `ON_TEACHER_RELEASE` quando o
+ * client não manda nada. `ON_DUE_DATE` exige `dueDate` definido (sem
+ * prazo, não há quando liberar automaticamente).
  */
 export const publishAssignment = onCall(async (request) => {
   if (!request.auth) {
@@ -74,6 +76,26 @@ export const publishAssignment = onCall(async (request) => {
       throw new HttpsError("invalid-argument", "Data limite inválida.");
     }
     dueDate = data.dueDate;
+  }
+
+  const resultsPolicy =
+    data.resultsPolicy === undefined || data.resultsPolicy === null
+      ? "ON_TEACHER_RELEASE"
+      : data.resultsPolicy;
+  if (
+    typeof resultsPolicy !== "string" ||
+    !RESULTS_POLICIES.includes(resultsPolicy)
+  ) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Política de resultados inválida.",
+    );
+  }
+  if (resultsPolicy === "ON_DUE_DATE" && !dueDate) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Defina uma data limite para liberar os resultados automaticamente nela.",
+    );
   }
 
   const uid = request.auth.uid;
@@ -154,7 +176,7 @@ export const publishAssignment = onCall(async (request) => {
     maxAttempts,
     startedCount: 0,
     firstStartedAt: null,
-    resultsPolicy: "ON_TEACHER_RELEASE",
+    resultsPolicy,
     resultsReleased: false,
     resultsReleasedAt: null,
     createdAt: now,

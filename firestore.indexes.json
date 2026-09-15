@@ -88,6 +88,14 @@
         { "fieldPath": "accountId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "assignments",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "resultsPolicy", "order": "ASCENDING" },
+        { "fieldPath": "resultsReleased", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

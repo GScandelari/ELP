@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AssignmentContentPreview } from "@/components/assignment-content-preview";
-import { closeAssignment, type AssignmentSummary } from "@/lib/assignments";
+import {
+  closeAssignment,
+  releaseAssignmentResults,
+  releaseAssignmentResultsErrorMessage,
+  type AssignmentSummary,
+} from "@/lib/assignments";
 
 const TYPE_LABEL: Record<AssignmentSummary["type"], string> = {
   MULTIPLE_CHOICE: "Múltipla escolha",
@@ -62,6 +67,8 @@ function AssignmentListItem({
 }) {
   const [showContent, setShowContent] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [releasing, setReleasing] = useState(false);
+  const [releaseError, setReleaseError] = useState<string | null>(null);
 
   async function handleClose() {
     if (!confirm("Encerrar esta atribuição? Não será possível reabrir.")) {
@@ -69,9 +76,21 @@ function AssignmentListItem({
     }
     setClosing(true);
     try {
-      await closeAssignment(classId, assignment.id);
+      await closeAssignment(classId, assignment.id, assignment.resultsPolicy);
     } finally {
       setClosing(false);
+    }
+  }
+
+  async function handleRelease() {
+    setReleaseError(null);
+    setReleasing(true);
+    try {
+      await releaseAssignmentResults(classId, assignment.id);
+    } catch (err) {
+      setReleaseError(releaseAssignmentResultsErrorMessage(err));
+    } finally {
+      setReleasing(false);
     }
   }
 
@@ -85,6 +104,7 @@ function AssignmentListItem({
             · {assignment.maxAttempts}{" "}
             {assignment.maxAttempts === 1 ? "tentativa" : "tentativas"}
             {assignment.allowRetry ? " (com nova tentativa)" : ""}
+            {assignment.resultsReleased ? " · resultados liberados" : ""}
           </p>
         </div>
         <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
@@ -110,7 +130,23 @@ function AssignmentListItem({
             {closing ? "Encerrando…" : "Encerrar"}
           </Button>
         )}
+        {!assignment.resultsReleased && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={releasing}
+            onClick={handleRelease}
+          >
+            {releasing ? "Liberando…" : "Liberar resultados"}
+          </Button>
+        )}
       </div>
+
+      {releaseError && (
+        <p role="alert" className="mt-2 text-sm text-red-600">
+          {releaseError}
+        </p>
+      )}
 
       {showContent && (
         <div className="mt-3">

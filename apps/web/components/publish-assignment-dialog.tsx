@@ -8,7 +8,14 @@ import { watchTeacherClasses, type ClassSummary } from "@/lib/classes";
 import {
   publishAssignment,
   publishAssignmentErrorMessage,
+  type AssignmentResultsPolicy,
 } from "@/lib/assignments";
+
+const RESULTS_POLICY_LABEL: Record<AssignmentResultsPolicy, string> = {
+  ON_TEACHER_RELEASE: "Eu libero manualmente",
+  ON_DUE_DATE: "Automaticamente na data limite",
+  ON_CLOSE: "Automaticamente ao encerrar",
+};
 
 /**
  * Atribui uma atividade `READY` a uma ou mais salas de uma vez (RF-011,
@@ -31,6 +38,8 @@ export function PublishAssignmentDialog({
   const [dueDate, setDueDate] = useState("");
   const [maxAttempts, setMaxAttempts] = useState(1);
   const [allowRetry, setAllowRetry] = useState(false);
+  const [resultsPolicy, setResultsPolicy] =
+    useState<AssignmentResultsPolicy>("ON_TEACHER_RELEASE");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -53,6 +62,7 @@ export function PublishAssignmentDialog({
     setDueDate("");
     setMaxAttempts(1);
     setAllowRetry(false);
+    setResultsPolicy("ON_TEACHER_RELEASE");
     setError(null);
   }
 
@@ -68,6 +78,10 @@ export function PublishAssignmentDialog({
       setError("Selecione ao menos uma sala.");
       return;
     }
+    if (resultsPolicy === "ON_DUE_DATE" && !dueDate) {
+      setError("Defina uma data limite para liberar automaticamente nela.");
+      return;
+    }
     setBusy(true);
     try {
       await Promise.all(
@@ -78,6 +92,7 @@ export function PublishAssignmentDialog({
             dueDate: dueDate || undefined,
             maxAttempts,
             allowRetry,
+            resultsPolicy,
           }),
         ),
       );
@@ -172,6 +187,36 @@ export function PublishAssignmentDialog({
           />
           Permitir nova tentativa
         </label>
+
+        <div>
+          <label
+            htmlFor="assignment-results-policy"
+            className="block text-sm font-medium"
+          >
+            Quando liberar os resultados aos alunos
+          </label>
+          <select
+            id="assignment-results-policy"
+            value={resultsPolicy}
+            onChange={(e) =>
+              setResultsPolicy(e.target.value as AssignmentResultsPolicy)
+            }
+            className="mt-1 h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+          >
+            {(
+              Object.keys(RESULTS_POLICY_LABEL) as AssignmentResultsPolicy[]
+            ).map((policy) => (
+              <option key={policy} value={policy}>
+                {RESULTS_POLICY_LABEL[policy]}
+              </option>
+            ))}
+          </select>
+          {resultsPolicy === "ON_DUE_DATE" && !dueDate && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Defina uma data limite acima para essa opção funcionar.
+            </p>
+          )}
+        </div>
 
         <DialogFormFooter
           error={error}
