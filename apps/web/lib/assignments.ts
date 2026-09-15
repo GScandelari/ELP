@@ -4,9 +4,12 @@ import { FirebaseError } from "firebase/app";
 import { httpsCallable } from "firebase/functions";
 import {
   collection,
+  doc,
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
+  updateDoc,
   where,
   type DocumentData,
   type Unsubscribe,
@@ -85,6 +88,23 @@ export function watchClassAssignments(
     },
     () => onChange([]),
   );
+}
+
+/**
+ * Encerra um assignment `PUBLISHED` (RF-011) — escrita direta, a rule já
+ * permite ao dono da sala mudar `status` mantendo `accountId`/`activityId`/
+ * `contentSnapshot` (docs/plano-fase-3.md §6). Sem volta: RF-011 descreve
+ * só o sentido PUBLISHED → CLOSED, sem reabertura.
+ */
+export async function closeAssignment(
+  classId: string,
+  assignmentId: string,
+): Promise<void> {
+  const { db } = getFirebase();
+  await updateDoc(doc(db, "classes", classId, "assignments", assignmentId), {
+    status: "CLOSED",
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export type PublishAssignmentInput = {

@@ -329,15 +329,15 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 - ✅ Guia de onboarding/suporte manual preenchido com o fluxo real (`docs/operations/onboarding-mvp.md`) — sem portal admin no MVP.
 - **Critério de saída atingido:** UC-002 e UC-003 do SDD completos; RN-001 a RN-004 cobertos por testes de Security Rules (27) e integração de Functions (40); E2E (Playwright, 8 cenários) cobrindo criar sala → entrar por código → inscrição manual (com e sem conta, incluindo menor) → gerência da sala, verificados no CI.
 
-### Fase 3 — Repositório de atividades + Activity Engine + 4 tipos do MVP (5–7 semanas, a maior fase)
+### Fase 3 — Repositório de atividades + Activity Engine + 4 tipos do MVP ✅ (PRs #13–#22)
 
-- **Repositório de atividades do professor** (`activities/{activityId}` + `items`), máquina de estados de autoria DRAFT → READY → LOCKED → ARCHIVED (ADR-012 / ADR-014).
-- **Atribuição por sala:** `publishAssignment` (callable) que valida a configuração (RN-006), recusa atividade `LOCKED` (RN-013), congela `contentSnapshot` (enunciado) e `assignmentKeys` (gabarito), e cria `classes/{classId}/assignments/{assignmentId}` — a mesma atividade pode ser atribuída a N salas (RN-012).
-- **Versionamento (ADR-014):** `cloneActivity` (callable) — duplica atividade + itens numa nova `DRAFT` com `clonedFrom` (disponível em qualquer atividade); `swapAssignmentActivity` (callable) — atualiza um assignment com `startedCount == 0` a partir de uma atividade de origem (a mesma, após edição no lugar, ou o clone), re-congelando snapshot e chave. Tela "Aplicar esta versão" que agrupa as salas por elegibilidade (ver ADR-014 §7).
-- Máquina de estados do assignment: PUBLISHED → CLOSED (RF-011).
-- Builder + Renderer para os 4 tipos do MVP: fill-in-blanks, meaning matching, translation/localization, multiple choice (seção 9.1–9.4 do SDD).
-- Handlers `validate` / `toStudentContent` / `score` por tipo nas Cloud Functions.
-- **Critério de saída:** UC-004 e UC-005 completos; professor cria uma atividade de cada tipo, atribui a duas salas, clona uma atividade e substitui a atribuição numa sala sem tentativas.
+- ✅ **Repositório de atividades do professor** (`activities/{activityId}` + `items`), máquina de estados de autoria DRAFT → READY → LOCKED → ARCHIVED (ADR-012 / ADR-014, PRs 3.1/3.2).
+- ✅ **Atribuição por sala:** `publishAssignment` (callable) que valida a configuração (RN-006), recusa atividade `LOCKED` (RN-013), congela `contentSnapshot` (enunciado) e `assignmentKeys` (gabarito), e cria `classes/{classId}/assignments/{assignmentId}` — a mesma atividade pode ser atribuída a N salas (RN-012, PR 3.7).
+- ✅ **Versionamento (ADR-014):** `cloneActivity` (callable) — duplica atividade + itens numa nova `DRAFT` com `clonedFrom` (disponível em qualquer atividade); `swapAssignmentActivity` (callable) — atualiza um assignment com `startedCount == 0` a partir de uma atividade de origem (a mesma, após edição no lugar, ou o clone), re-congelando snapshot e chave. Tela "Aplicar esta versão" que agrupa as salas por elegibilidade (ver ADR-014 §7); o grupo "salas com tentativas iniciadas" fica só informativo — a ação composta "encerrar + publicar nova versão" não tem UI própria ainda (PR 3.8).
+- ✅ Máquina de estados do assignment: PUBLISHED → CLOSED (RF-011, escrita direta, PR 3.9).
+- ✅ Builder + Renderer para os 4 tipos do MVP: multiple choice, fill-in-blanks, translation/localization, meaning matching (seção 9.1–9.4 do SDD, PRs 3.3–3.6). Renderer é só leitura nesta fase (preview do professor + visualização do aluno) — a versão interativa entra na Fase 4 junto de `createAttempt`/`submitAttempt`.
+- ✅ Handlers `validate` / `toStudentContent` / `toGradingConfig` / `score` por tipo nas Cloud Functions (`score` já implementado, ainda sem uso até a Fase 4).
+- ✅ **Critério de saída:** UC-004 e UC-005 completos; professor cria uma atividade de cada tipo, atribui a duas salas, clona uma atividade e substitui a atribuição numa sala sem tentativas — coberto por `e2e/fase-3-fim-a-fim.spec.ts` (PR 3.9).
 
 ### Fase 4 — Execução e Avaliação — Attempts (3–4 semanas)
 

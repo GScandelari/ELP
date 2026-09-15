@@ -324,11 +324,11 @@ Ordem sequencial (3.1 é pré-requisito de tudo; 3.3–3.6 podem ser reordenados
 
 ## 11. Checklist de conclusão da fase
 
-- [ ] `activity-types` (interface + 4 handlers) implementados e testados isoladamente
-- [ ] Rules de `items`/`assignments`/`assignmentRefs` atualizadas + tabela §6.1 verde
-- [ ] Índices novos adicionados
-- [ ] Repositório de atividades navegável (criar, editar metadados, arquivar) para os 4 tipos
-- [ ] `publishAssignment` funcionando para os 4 tipos, para múltiplas salas
-- [ ] `cloneActivity` + `swapAssignmentActivity` funcionando (com `startedCount == 0` semeado em teste de integração)
-- [ ] E2E: atividade de cada tipo → atribuir a 2 salas → clonar → substituir numa sala sem tentativas
-- [ ] `docs/IMPLEMENTATION-PLAN.md` — Fase 3 marcada como ✅
+- [x] `activity-types` (interface + 4 handlers) implementados e testados isoladamente
+- [x] Rules de `items`/`assignments`/`assignmentRefs` atualizadas + tabela §6.1 verde
+- [x] Índices novos adicionados
+- [x] Repositório de atividades navegável (criar, editar metadados, arquivar) para os 4 tipos
+- [x] `publishAssignment` funcionando para os 4 tipos, para múltiplas salas
+- [x] `cloneActivity` + `swapAssignmentActivity` funcionando (com `startedCount == 0` semeado em teste de integração)
+- [x] E2E: atividade de cada tipo → atribuir a 2 salas → clonar → substituir numa sala sem tentativas
+- [x] `docs/IMPLEMENTATION-PLAN.md` — Fase 3 marcada como ✅

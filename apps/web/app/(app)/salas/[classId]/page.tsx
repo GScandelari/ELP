@@ -146,7 +146,7 @@ function ClassDetail() {
         <h2 className="text-sm font-medium text-muted-foreground">
           Atividades atribuídas ({assignments.length})
         </h2>
-        <AssignmentList assignments={assignments} />
+        <AssignmentList classId={params.classId} assignments={assignments} />
       </div>
 
       <AddStudentDialog

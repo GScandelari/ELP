@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AssignmentContentPreview } from "@/components/assignment-content-preview";
-import type { AssignmentSummary } from "@/lib/assignments";
+import { closeAssignment, type AssignmentSummary } from "@/lib/assignments";
 
 const TYPE_LABEL: Record<AssignmentSummary["type"], string> = {
   MULTIPLE_CHOICE: "Múltipla escolha",
@@ -24,10 +24,12 @@ function formatDueDate(dueDate: string | null): string {
   return `até ${date.toLocaleDateString("pt-BR")}`;
 }
 
-/** Lista os assignments de uma sala (RF-011) — sem ações de encerrar ainda (PR 3.9). */
+/** Lista os assignments de uma sala (RF-011), com ação de encerrar. */
 export function AssignmentList({
+  classId,
   assignments,
 }: {
+  classId: string;
   assignments: AssignmentSummary[];
 }) {
   if (assignments.length === 0) {
@@ -41,14 +43,37 @@ export function AssignmentList({
   return (
     <ul aria-label="Atividades atribuídas" className="mt-3 space-y-3">
       {assignments.map((assignment) => (
-        <AssignmentListItem key={assignment.id} assignment={assignment} />
+        <AssignmentListItem
+          key={assignment.id}
+          classId={classId}
+          assignment={assignment}
+        />
       ))}
     </ul>
   );
 }
 
-function AssignmentListItem({ assignment }: { assignment: AssignmentSummary }) {
+function AssignmentListItem({
+  classId,
+  assignment,
+}: {
+  classId: string;
+  assignment: AssignmentSummary;
+}) {
   const [showContent, setShowContent] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  async function handleClose() {
+    if (!confirm("Encerrar esta atribuição? Não será possível reabrir.")) {
+      return;
+    }
+    setClosing(true);
+    try {
+      await closeAssignment(classId, assignment.id);
+    } finally {
+      setClosing(false);
+    }
+  }
 
   return (
     <li className="rounded-md border border-border p-3">
@@ -67,14 +92,25 @@ function AssignmentListItem({ assignment }: { assignment: AssignmentSummary }) {
         </span>
       </div>
 
-      <Button
-        size="sm"
-        variant="outline"
-        className="mt-2"
-        onClick={() => setShowContent((v) => !v)}
-      >
-        {showContent ? "Ocultar" : "Mostrar"} conteúdo
-      </Button>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setShowContent((v) => !v)}
+        >
+          {showContent ? "Ocultar" : "Mostrar"} conteúdo
+        </Button>
+        {assignment.status === "PUBLISHED" && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={closing}
+            onClick={handleClose}
+          >
+            {closing ? "Encerrando…" : "Encerrar"}
+          </Button>
+        )}
+      </div>
 
       {showContent && (
         <div className="mt-3">
