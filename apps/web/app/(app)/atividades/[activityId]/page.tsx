@@ -2,27 +2,26 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import type { Unsubscribe } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
 import {
   setActivityStatus,
   watchActivity,
   type ActivitySummary,
 } from "@/lib/activities";
-import {
-  watchMultipleChoiceItems,
-  type MultipleChoiceItem,
-} from "@/lib/multiple-choice";
-import {
-  watchFillInBlanksItems,
-  type FillInBlanksItem,
-} from "@/lib/fill-in-blanks";
+import type { ActivityItem } from "@/lib/activity-items";
+import { watchMultipleChoiceItems } from "@/lib/multiple-choice";
+import { watchFillInBlanksItems } from "@/lib/fill-in-blanks";
+import { watchTranslationItems } from "@/lib/translation";
 import { RequireRole } from "@/components/require-role";
 import { EditActivityDialog } from "@/components/edit-activity-dialog";
 import { MultipleChoiceBuilder } from "@/components/multiple-choice-builder";
 import { MultipleChoiceRenderer } from "@/components/multiple-choice-renderer";
 import { FillInBlanksBuilder } from "@/components/fill-in-blanks-builder";
 import { FillInBlanksRenderer } from "@/components/fill-in-blanks-renderer";
+import { TranslationBuilder } from "@/components/translation-builder";
+import { TranslationRenderer } from "@/components/translation-renderer";
 import { Button } from "@/components/ui/button";
 
 const STATUS_LABEL: Record<ActivitySummary["status"], string> = {
@@ -38,6 +37,34 @@ const TYPE_LABEL: Record<ActivitySummary["type"], string> = {
   TRANSLATION: "Tradução/localização",
   MEANING_MATCHING: "Relacionamento de significados",
 };
+
+/** Builder de cada tipo já disponível — todos têm o mesmo formato de props. */
+const BUILDERS: Partial<
+  Record<
+    ActivitySummary["type"],
+    (props: {
+      activityId: string;
+      uid: string;
+      readOnly?: boolean;
+    }) => ReactNode
+  >
+> = {
+  MULTIPLE_CHOICE: MultipleChoiceBuilder,
+  FILL_IN_BLANKS: FillInBlanksBuilder,
+  TRANSLATION: TranslationBuilder,
+};
+
+type PreviewableType = "MULTIPLE_CHOICE" | "FILL_IN_BLANKS" | "TRANSLATION";
+
+function isPreviewableType(
+  type: ActivitySummary["type"],
+): type is PreviewableType {
+  return (
+    type === "MULTIPLE_CHOICE" ||
+    type === "FILL_IN_BLANKS" ||
+    type === "TRANSLATION"
+  );
+}
 
 export default function ActivityDetailPage() {
   return (
@@ -80,6 +107,8 @@ function ActivityDetail() {
       </div>
     );
   }
+
+  const Builder = BUILDERS[activity.type];
 
   return (
     <div>
@@ -130,33 +159,23 @@ function ActivityDetail() {
           Itens ({activity.itemCount})
         </h2>
         <div className="mt-2">
-          {activity.type === "MULTIPLE_CHOICE" && (
-            <MultipleChoiceBuilder
+          {Builder ? (
+            <Builder
               activityId={params.activityId}
               uid={user.uid}
               readOnly={activity.locked}
             />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              O construtor de itens para{" "}
+              {TYPE_LABEL[activity.type].toLowerCase()} chega numa próxima PR da
+              Fase 3.
+            </p>
           )}
-          {activity.type === "FILL_IN_BLANKS" && (
-            <FillInBlanksBuilder
-              activityId={params.activityId}
-              uid={user.uid}
-              readOnly={activity.locked}
-            />
-          )}
-          {activity.type !== "MULTIPLE_CHOICE" &&
-            activity.type !== "FILL_IN_BLANKS" && (
-              <p className="text-sm text-muted-foreground">
-                O construtor de itens para{" "}
-                {TYPE_LABEL[activity.type].toLowerCase()} chega numa próxima PR
-                da Fase 3.
-              </p>
-            )}
         </div>
       </div>
 
-      {(activity.type === "MULTIPLE_CHOICE" ||
-        activity.type === "FILL_IN_BLANKS") && (
+      {isPreviewableType(activity.type) && (
         <ActivityPreview
           type={activity.type}
           activityId={params.activityId}
@@ -266,7 +285,7 @@ function ActivityPreview({
   activityId,
   uid,
 }: {
-  type: "MULTIPLE_CHOICE" | "FILL_IN_BLANKS";
+  type: PreviewableType;
   activityId: string;
   uid: string;
 }) {
@@ -277,72 +296,100 @@ function ActivityPreview({
       <Button size="sm" variant="outline" onClick={() => setOpen((v) => !v)}>
         {open ? "Ocultar" : "Mostrar"} pré-visualização do aluno
       </Button>
-      {open &&
-        (type === "MULTIPLE_CHOICE" ? (
-          <MultipleChoicePreview activityId={activityId} uid={uid} />
-        ) : (
-          <FillInBlanksPreview activityId={activityId} uid={uid} />
-        ))}
+      {open && (
+        <ActivityPreviewContent type={type} activityId={activityId} uid={uid} />
+      )}
     </div>
   );
 }
 
-function MultipleChoicePreview({
+function ActivityPreviewContent({
+  type,
   activityId,
   uid,
 }: {
+  type: PreviewableType;
   activityId: string;
   uid: string;
 }) {
-  const [items, setItems] = useState<MultipleChoiceItem[] | null>(null);
-
-  useEffect(
-    () => watchMultipleChoiceItems(activityId, uid, setItems),
-    [activityId, uid],
-  );
-
-  if (items === null) {
-    return <p className="mt-3 text-sm text-muted-foreground">Carregando…</p>;
-  }
-  return (
-    <div className="mt-3">
-      <MultipleChoiceRenderer
-        items={items.map((i) => ({
+  if (type === "MULTIPLE_CHOICE") {
+    return (
+      <ItemPreview
+        activityId={activityId}
+        uid={uid}
+        watchItems={watchMultipleChoiceItems}
+        mapItem={(i) => ({
           question: i.configuration.question,
           options: i.configuration.options,
-        }))}
+        })}
+        Renderer={MultipleChoiceRenderer}
       />
-    </div>
-  );
-}
-
-function FillInBlanksPreview({
-  activityId,
-  uid,
-}: {
-  activityId: string;
-  uid: string;
-}) {
-  const [items, setItems] = useState<FillInBlanksItem[] | null>(null);
-
-  useEffect(
-    () => watchFillInBlanksItems(activityId, uid, setItems),
-    [activityId, uid],
-  );
-
-  if (items === null) {
-    return <p className="mt-3 text-sm text-muted-foreground">Carregando…</p>;
+    );
   }
-  return (
-    <div className="mt-3">
-      <FillInBlanksRenderer
-        items={items.map((i) => ({
+
+  if (type === "FILL_IN_BLANKS") {
+    return (
+      <ItemPreview
+        activityId={activityId}
+        uid={uid}
+        watchItems={watchFillInBlanksItems}
+        mapItem={(i) => ({
           mode: i.configuration.mode,
           text: i.configuration.text,
           blankIds: i.configuration.blanks.map((b) => b.id),
           wordBank: i.configuration.wordBank,
-        }))}
+        })}
+        Renderer={FillInBlanksRenderer}
       />
+    );
+  }
+
+  return (
+    <ItemPreview
+      activityId={activityId}
+      uid={uid}
+      watchItems={watchTranslationItems}
+      mapItem={(i) => ({
+        mode: i.configuration.mode,
+        source: i.configuration.source,
+        options: i.configuration.options,
+      })}
+      Renderer={TranslationRenderer}
+    />
+  );
+}
+
+/** Observa os itens de um tipo e delega a exibição ao Renderer daquele tipo. */
+function ItemPreview<TConfig, TView>({
+  activityId,
+  uid,
+  watchItems,
+  mapItem,
+  Renderer,
+}: {
+  activityId: string;
+  uid: string;
+  watchItems: (
+    activityId: string,
+    uid: string,
+    onChange: (items: ActivityItem<TConfig>[]) => void,
+  ) => Unsubscribe;
+  mapItem: (item: ActivityItem<TConfig>) => TView;
+  Renderer: (props: { items: TView[] }) => ReactNode;
+}) {
+  const [items, setItems] = useState<ActivityItem<TConfig>[] | null>(null);
+
+  useEffect(
+    () => watchItems(activityId, uid, setItems),
+    [activityId, uid, watchItems],
+  );
+
+  if (items === null) {
+    return <p className="mt-3 text-sm text-muted-foreground">Carregando…</p>;
+  }
+  return (
+    <div className="mt-3">
+      <Renderer items={items.map(mapItem)} />
     </div>
   );
 }

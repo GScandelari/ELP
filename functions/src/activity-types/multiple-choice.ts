@@ -1,5 +1,6 @@
 import { HttpsError } from "firebase-functions/v2/https";
 import type { ActivityTypeHandler } from "./types";
+import { validateCorrectIndex, validateOptions } from "./option-validation";
 
 export type MultipleChoiceConfig = {
   question: string;
@@ -20,9 +21,6 @@ export type MultipleChoiceAnswer = {
   selectedIndex: number;
 };
 
-const MIN_OPTIONS = 2;
-const MAX_OPTIONS = 6;
-
 /** Handler do tipo "Múltipla escolha" (RF-009, seção 9.4 do SDD). */
 export const multipleChoiceHandler: ActivityTypeHandler<
   MultipleChoiceConfig,
@@ -40,35 +38,8 @@ export const multipleChoiceHandler: ActivityTypeHandler<
         "Cada questão precisa de um enunciado.",
       );
     }
-    if (
-      !Array.isArray(config.options) ||
-      config.options.length < MIN_OPTIONS ||
-      config.options.length > MAX_OPTIONS
-    ) {
-      throw new HttpsError(
-        "invalid-argument",
-        `Cada questão precisa de ${MIN_OPTIONS} a ${MAX_OPTIONS} alternativas.`,
-      );
-    }
-    if (
-      config.options.some((o) => typeof o !== "string" || o.trim().length === 0)
-    ) {
-      throw new HttpsError(
-        "invalid-argument",
-        "Nenhuma alternativa pode ficar em branco.",
-      );
-    }
-    if (
-      typeof config.correctIndex !== "number" ||
-      !Number.isInteger(config.correctIndex) ||
-      config.correctIndex < 0 ||
-      config.correctIndex >= config.options.length
-    ) {
-      throw new HttpsError(
-        "invalid-argument",
-        "Marque qual alternativa é a correta.",
-      );
-    }
+    validateOptions(config.options);
+    validateCorrectIndex(config.correctIndex, config.options.length);
   },
 
   toStudentContent(config) {
