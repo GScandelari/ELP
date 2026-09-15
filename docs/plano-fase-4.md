@@ -251,18 +251,22 @@ Precisa de teste de rules próprio (regressão do padrão de `list` — a condi�
 
 ---
 
-## 9. Quebra em PRs (proposta, sujeita ao item 3 acima)
+## 9. Quebra em PRs
+
+**Reordenado depois da PR 4.2** (decisão registrada em conversa, não numerada em §8 por ter vindo depois): construir o Renderer interativo isolado, sem nenhuma página que o use, deixaria as PRs 4.3–4.6 sem cobertura E2E real até uma PR de fiação posterior amarrar tudo — foge do padrão seguido a fase inteira (cada PR testável de ponta a ponta, igual a Fase 3 e as PRs 4.1/4.2). Em vez disso, a PR 4.3 já entrega o portal do aluno completo (sala → atividade → resolver → enviar) com o primeiro tipo (Múltipla Escolha) interativo e testado E2E; 4.4–4.6 só somam mais um tipo cada à página já existente (bem menores, puramente config-driven — mesmo padrão que a Fase 3 usou pra crescer de tipo em tipo). A antiga "PR 4.7" (fiação) deixa de existir como PR separada.
 
 | PR | Título | Entrega |
 |---|---|---|
-| **4.1** | `feat(attempts): fundação — rules, attemptResults, createAttempt` | Rules de `attempts`/`answers`/`attemptResults` + fix do `list` de `assignments` do aluno (§6.3); `createAttempt` (callable) com criar-ou-recuperar + trava da atividade (§3.3); testes de rules #1–14 e integração |
-| **4.2** | `feat(attempts): submitAttempt + liberação de resultados` | `submitAttempt` (callable); `releaseAssignmentResults` (callable) + ajuste no `closeAssignment` pra `ON_CLOSE`; `releaseResultsOnDueDate` (scheduled); `resultsPolicy` exposto no `PublishAssignmentDialog` (decisão 1) |
-| **4.3–4.6** *(ou 4.3 única, conforme decisão 3)* | `feat(attempts): resolução interativa — {tipo}` | Renderer interativo por tipo, reaproveitando os 4 componentes read-only da Fase 3 |
-| **4.7** | `feat(web): portal do aluno — sala e atividade` | `/salas/[classId]` com branch por papel; lista de assignments do aluno; tela de resolução ligando os Renderers interativos a `createAttempt`/salvar progresso/`submitAttempt` |
-| **4.8** | `feat(web): resultado do aluno + liberar resultados (professor)` | Tela de resultado condicionada a `resultsReleased`; botão "Liberar resultados" na `AssignmentList` do professor |
-| **4.9** | `feat(attempts): E2E completo + fecha a Fase 4` | E2E: aluno resolve → envia → (professor libera) → aluno vê nota; `IMPLEMENTATION-PLAN.md` marcado ✅ |
+| **4.1** | `feat(attempts): fundação — rules, attemptResults, createAttempt` | ✅ Rules de `attempts`/`answers`/`attemptResults` + fix do `list` de `assignments` do aluno (§6.3); `createAttempt` (callable) com criar-ou-recuperar + trava da atividade (§3.3); testes de rules #1–14 e integração |
+| **4.2** | `feat(attempts): submitAttempt + liberação de resultados` | ✅ `submitAttempt` (callable); `releaseAssignmentResults` (callable) + ajuste no `closeAssignment` pra `ON_CLOSE`; `releaseResultsOnDueDate` (scheduled); `resultsPolicy` exposto no `PublishAssignmentDialog` (decisão 1) |
+| **4.3** | `feat(web): portal do aluno — resolver Múltipla Escolha` | `/salas/[classId]` com branch por papel; lista de assignments do aluno; tela de resolução (`createAttempt` → Renderer interativo de Múltipla Escolha → salvar progresso debounced → `submitAttempt`); confirmação de envio; E2E completo do primeiro tipo |
+| **4.4** | `feat(web): resolução interativa — Preencher espaços` | Soma o tipo à tela de resolução já existente (config-driven, mesmo padrão de crescimento da Fase 3) |
+| **4.5** | `feat(web): resolução interativa — Tradução/localização` | Idem |
+| **4.6** | `feat(web): resolução interativa — Relacionamento de significados` | Idem — fecha os 4 tipos resolvíveis pelo aluno |
+| **4.7** | `feat(web): resultado do aluno + liberar resultados (professor)` | Tela de resultado condicionada a `resultsReleased`; liga o botão "Liberar resultados" já existente na `AssignmentList` (PR 4.2) ao resultado visível pro aluno |
+| **4.8** | `feat(attempts): E2E completo + fecha a Fase 4` | E2E: aluno resolve → envia → (professor libera) → aluno vê nota; `IMPLEMENTATION-PLAN.md` marcado ✅ |
 
-Ordem sequencial: 4.1 é pré-requisito de tudo; 4.2 antes de 4.7/4.8 (a tela do aluno precisa de `submitAttempt` pronto pra ligar o botão enviar); 4.3–4.6 podem andar em paralelo a 4.2 (só dependem do Renderer read-only já existente); 4.9 fecha depois de tudo.
+Ordem sequencial: 4.1 e 4.2 são pré-requisito de tudo (já concluídos); 4.3 é pré-requisito de 4.4–4.8 (constrói a página que os demais reaproveitam); 4.8 fecha depois de tudo.
 
 ---
 
