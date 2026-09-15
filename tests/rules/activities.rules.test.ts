@@ -408,4 +408,27 @@ describe("firestore.rules — activities (Fase 3)", () => {
       ),
     );
   });
+
+  it("20. aluno inscrito lista os assignments PUBLISHED/CLOSED da própria sala (Fase 4, regressão list)", async () => {
+    const snap = await assertSucceeds(
+      getDocs(
+        query(
+          collection(student(), `classes/${CLASS_ID}/assignments`),
+          where("status", "in", ["PUBLISHED", "CLOSED"]),
+        ),
+      ),
+    );
+    expect(snap.size).toBe(2); // ASSIGNMENT_ID (PUBLISHED) + CLOSED_ASSIGNMENT_ID
+  });
+
+  it("21. aluno não inscrito não lista os assignments da sala", async () => {
+    await assertFails(
+      getDocs(
+        query(
+          collection(otherStudent(), `classes/${CLASS_ID}/assignments`),
+          where("status", "in", ["PUBLISHED", "CLOSED"]),
+        ),
+      ),
+    );
+  });
 });

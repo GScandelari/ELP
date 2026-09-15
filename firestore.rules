@@ -95,7 +95,13 @@ service cloud.firestore {
         // accountId denormalizado por publishAssignment/swapAssignmentActivity).
         allow get: if isAccountOwner(classId)
           || (isEnrolledStudent(classId) && resource.data.status in ['PUBLISHED', 'CLOSED']);
-        allow list: if isSignedIn() && resource.data.accountId == request.auth.uid;
+        // aluno lista os assignments PUBLISHED/CLOSED da propria sala (Fase 4,
+        // portal do aluno) - "status" e campo de dado batendo com o where da
+        // query (docs/plano-fase-3.md secao 2, pendencia registrada na Fase 3).
+        allow list: if isSignedIn() && (
+          resource.data.accountId == request.auth.uid ||
+          (isEnrolledStudent(classId) && resource.data.status in ['PUBLISHED', 'CLOSED'])
+        );
         // dono fecha/reabre (status) direto (RF-011), mas nao os campos
         // que so publishAssignment/swapAssignmentActivity (Cloud Function) escrevem
         allow update: if isAccountOwner(classId)
@@ -211,6 +217,22 @@ service cloud.firestore {
           && attemptOf(attemptId).studentId == request.auth.uid
           && attemptOf(attemptId).get('status', '') == 'IN_PROGRESS';
       }
+    }
+
+    // ---- nota da tentativa - separada de attempts/answers de proposito ----
+    // (docs/plano-fase-4.md secao 2): attempts/answers nunca carregam
+    // score/isCorrect/pointsAwarded - so aqui, atras de um gate por
+    // resultsReleased. "get" contra o assignment (documento fixo) numa regra
+    // de "get" (nao "list") e seguro - a licao da Fase 2/3 e especifica de
+    // list/collection group, nao de operacao em documento unico.
+    match /attemptResults/{attemptId} {
+      allow get: if isSignedIn() && (
+        (resource.data.studentId == request.auth.uid &&
+         get(/databases/$(database)/documents/classes/$(resource.data.classId)/assignments/$(resource.data.assignmentId)).data.resultsReleased == true)
+        || isAccountOwner(resource.data.classId)
+      );
+      allow list: if false; // sem tela de historico agregado nesta fase
+      allow write: if false; // so submitAttempt (Cloud Function)
     }
 
     // Qualquer caminho nao listado acima e negado por padrao.
