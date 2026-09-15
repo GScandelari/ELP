@@ -160,6 +160,39 @@ export async function releaseResultsAsTeacher(
   await page.getByRole("button", { name: "Sair" }).click();
 }
 
+/**
+ * Aluno já respondeu (o "Enviar" da tela de resolução) — clica em
+ * enviar, confere a confirmação pendente, sai; professor libera os
+ * resultados; aluno revisita a atividade e confere a nota final.
+ * Compartilhado pelos specs de "resolver" de cada tipo (4.3-4.6):
+ * só muda o que veio antes (como o aluno respondeu) e a nota esperada.
+ */
+export async function submitAndVerifyReleasedScore(
+  page: Page,
+  teacherEmail: string,
+  studentEmail: string,
+  className: string,
+  activityTitle: string,
+  expectedScoreText: string,
+) {
+  await page.getByRole("button", { name: "Enviar" }).click();
+
+  await expect(page.getByText("Tentativa enviada.")).toBeVisible();
+  await expect(
+    page.getByText("Aguardando liberação do resultado pelo professor."),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Sair" }).click();
+
+  await releaseResultsAsTeacher(page, teacherEmail, className);
+
+  await login(page, studentEmail);
+  await page.getByRole("link", { name: "Minhas salas" }).click();
+  await page.getByRole("link", { name: className }).click();
+  await page.getByRole("link", { name: activityTitle }).click();
+  await expect(page.getByText(expectedScoreText)).toBeVisible();
+}
+
 export async function registerStudent(page: Page, email: string) {
   await page.goto("/cadastro");
   await page.getByRole("button", { name: "Aluno" }).click();

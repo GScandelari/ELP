@@ -4,10 +4,9 @@ import {
   createActivity,
   createClass,
   joinClassAndOpenAssignment,
-  login,
   publishActivity,
-  releaseResultsAsTeacher,
   registerTeacher,
+  submitAndVerifyReleasedScore,
   uniqueEmail,
   waitForFunctionsEmulator,
 } from "./helpers";
@@ -50,22 +49,13 @@ test("aluno: resolve uma atividade de preencher espaços, envia e vê a nota ap�
   );
 
   await page.getByLabel("Espaço 1 da questão 1").fill("wake");
-  await page.getByRole("button", { name: "Enviar" }).click();
 
-  await expect(page.getByText("Tentativa enviada.")).toBeVisible();
-  await expect(
-    page.getByText("Aguardando liberação do resultado pelo professor."),
-  ).toBeVisible();
-
-  await page.getByRole("button", { name: "Sair" }).click();
-
-  // professor: libera os resultados
-  await releaseResultsAsTeacher(page, teacherEmail, "Inglês 6º ano");
-
-  // aluno: volta na atividade e agora vê a nota
-  await login(page, studentEmail);
-  await page.getByRole("link", { name: "Minhas salas" }).click();
-  await page.getByRole("link", { name: "Inglês 6º ano" }).click();
-  await page.getByRole("link", { name: "Rotina diária" }).click();
-  await expect(page.getByText("Nota: 3 / 3")).toBeVisible();
+  await submitAndVerifyReleasedScore(
+    page,
+    teacherEmail,
+    studentEmail,
+    "Inglês 6º ano",
+    "Rotina diária",
+    "Nota: 3 / 3",
+  );
 });
