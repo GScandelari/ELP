@@ -3,6 +3,7 @@ import type { ActivityType, ActivityTypeHandler } from "./types";
 import { multipleChoiceHandler } from "./multiple-choice";
 import { fillInBlanksHandler } from "./fill-in-blanks";
 import { translationHandler } from "./translation";
+import { meaningMatchingHandler } from "./meaning-matching";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyHandler = ActivityTypeHandler<any, any, any, any>;
@@ -12,7 +13,7 @@ const registry: Partial<Record<ActivityType, AnyHandler>> = {
   MULTIPLE_CHOICE: multipleChoiceHandler,
   FILL_IN_BLANKS: fillInBlanksHandler,
   TRANSLATION: translationHandler,
-  // MEANING_MATCHING chega na próxima PR da Fase 3
+  MEANING_MATCHING: meaningMatchingHandler,
 };
 
 /** Lança `failed-precondition` para um tipo ainda sem handler registrado. */

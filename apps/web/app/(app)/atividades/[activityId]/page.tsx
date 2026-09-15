@@ -14,6 +14,7 @@ import type { ActivityItem } from "@/lib/activity-items";
 import { watchMultipleChoiceItems } from "@/lib/multiple-choice";
 import { watchFillInBlanksItems } from "@/lib/fill-in-blanks";
 import { watchTranslationItems } from "@/lib/translation";
+import { watchMeaningMatchingItems } from "@/lib/meaning-matching";
 import { RequireRole } from "@/components/require-role";
 import { EditActivityDialog } from "@/components/edit-activity-dialog";
 import { MultipleChoiceBuilder } from "@/components/multiple-choice-builder";
@@ -22,6 +23,8 @@ import { FillInBlanksBuilder } from "@/components/fill-in-blanks-builder";
 import { FillInBlanksRenderer } from "@/components/fill-in-blanks-renderer";
 import { TranslationBuilder } from "@/components/translation-builder";
 import { TranslationRenderer } from "@/components/translation-renderer";
+import { MeaningMatchingBuilder } from "@/components/meaning-matching-builder";
+import { MeaningMatchingRenderer } from "@/components/meaning-matching-renderer";
 import { Button } from "@/components/ui/button";
 
 const STATUS_LABEL: Record<ActivitySummary["status"], string> = {
@@ -52,9 +55,11 @@ const BUILDERS: Partial<
   MULTIPLE_CHOICE: MultipleChoiceBuilder,
   FILL_IN_BLANKS: FillInBlanksBuilder,
   TRANSLATION: TranslationBuilder,
+  MEANING_MATCHING: MeaningMatchingBuilder,
 };
 
-type PreviewableType = "MULTIPLE_CHOICE" | "FILL_IN_BLANKS" | "TRANSLATION";
+type PreviewableType =
+  "MULTIPLE_CHOICE" | "FILL_IN_BLANKS" | "TRANSLATION" | "MEANING_MATCHING";
 
 function isPreviewableType(
   type: ActivitySummary["type"],
@@ -62,7 +67,8 @@ function isPreviewableType(
   return (
     type === "MULTIPLE_CHOICE" ||
     type === "FILL_IN_BLANKS" ||
-    type === "TRANSLATION"
+    type === "TRANSLATION" ||
+    type === "MEANING_MATCHING"
   );
 }
 
@@ -344,17 +350,29 @@ function ActivityPreviewContent({
     );
   }
 
+  if (type === "TRANSLATION") {
+    return (
+      <ItemPreview
+        activityId={activityId}
+        uid={uid}
+        watchItems={watchTranslationItems}
+        mapItem={(i) => ({
+          mode: i.configuration.mode,
+          source: i.configuration.source,
+          options: i.configuration.options,
+        })}
+        Renderer={TranslationRenderer}
+      />
+    );
+  }
+
   return (
     <ItemPreview
       activityId={activityId}
       uid={uid}
-      watchItems={watchTranslationItems}
-      mapItem={(i) => ({
-        mode: i.configuration.mode,
-        source: i.configuration.source,
-        options: i.configuration.options,
-      })}
-      Renderer={TranslationRenderer}
+      watchItems={watchMeaningMatchingItems}
+      mapItem={(i) => ({ pairs: i.configuration.pairs })}
+      Renderer={MeaningMatchingRenderer}
     />
   );
 }
