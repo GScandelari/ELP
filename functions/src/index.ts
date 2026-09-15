@@ -15,6 +15,9 @@ export { publishAssignment } from "./activities/publish-assignment";
 export { cloneActivity } from "./activities/clone-activity";
 export { swapAssignmentActivity } from "./activities/swap-assignment-activity";
 export { createAttempt } from "./attempts/create-attempt";
+export { submitAttempt } from "./attempts/submit-attempt";
+export { releaseAssignmentResults } from "./activities/release-assignment-results";
+export { releaseResultsOnDueDate } from "./activities/release-results-on-due-date";
 
 /*
  * -------------------------------------------------------------------------
@@ -22,10 +25,6 @@ export { createAttempt } from "./attempts/create-attempt";
  *
  * auth/
  *   recordConsent            (embutido em finalizeSignup por enquanto)
- * activities/
- *   releaseAssignmentResults liberação de resultados aos alunos (ADR-013)
- * attempts/
- *   submitAttempt            lê assignmentKeys, calcula score (RN-008), status GRADED
  * privacy/
  *   exportUserData / deleteUserData / purgeExpiredData (ADR-011)
  * -------------------------------------------------------------------------

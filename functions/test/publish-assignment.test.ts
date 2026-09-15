@@ -100,6 +100,47 @@ describe("publishAssignment (integração)", () => {
     ).rejects.toMatchObject({ code: "not-found" });
   });
 
+  it("rejeita resultsPolicy inválida", async () => {
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid);
+    await seedItem(db, "a1", "i1", TEACHER.uid);
+
+    await expect(
+      call(
+        { classId: "c1", activityId: "a1", resultsPolicy: "QUALQUER_COISA" },
+        TEACHER,
+      ),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+  });
+
+  it("rejeita ON_DUE_DATE sem dueDate (ADR-013 §2)", async () => {
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid);
+    await seedItem(db, "a1", "i1", TEACHER.uid);
+
+    await expect(
+      call(
+        { classId: "c1", activityId: "a1", resultsPolicy: "ON_DUE_DATE" },
+        TEACHER,
+      ),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+  });
+
+  it("aceita resultsPolicy explícita (ON_CLOSE) e grava no assignment", async () => {
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid);
+    await seedItem(db, "a1", "i1", TEACHER.uid);
+
+    const res = await call(
+      { classId: "c1", activityId: "a1", resultsPolicy: "ON_CLOSE" },
+      TEACHER,
+    );
+    const snap = await db
+      .doc(`classes/c1/assignments/${res.assignmentId}`)
+      .get();
+    expect(snap.get("resultsPolicy")).toBe("ON_CLOSE");
+  });
+
   it("rejeita sala inexistente", async () => {
     await seedActivity(db, "a1", TEACHER.uid);
     await seedItem(db, "a1", "i1", TEACHER.uid);
