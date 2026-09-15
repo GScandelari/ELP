@@ -123,6 +123,43 @@ export async function addChoiceItem(
   await expect(itemDialog).toBeHidden();
 }
 
+/**
+ * Aluno entra numa sala pelo código e navega até um assignment
+ * específico dentro dela (UC-006 passos 1-2) — compartilhado pelos
+ * specs de "resolver" de cada tipo (um por PR, 4.3-4.6).
+ */
+export async function joinClassAndOpenAssignment(
+  page: Page,
+  studentEmail: string,
+  code: string,
+  className: string,
+  activityTitle: string,
+) {
+  await registerStudent(page, studentEmail);
+  await page.getByRole("link", { name: "Minhas salas" }).click();
+  await page.getByRole("link", { name: "Entrar em sala" }).click();
+  await page.getByLabel("Código da sala").fill(code);
+  await page.getByRole("button", { name: "Entrar na sala" }).click();
+  await page.getByRole("link", { name: className }).click();
+  await expect(page).toHaveURL(/\/salas\/[^/]+$/);
+  await page.getByRole("link", { name: activityTitle }).click();
+  await expect(page).toHaveURL(/\/salas\/[^/]+\/atividades\/[^/]+$/);
+}
+
+/** Professor loga, entra na sala e libera os resultados de um assignment (RF-017/ADR-013). */
+export async function releaseResultsAsTeacher(
+  page: Page,
+  teacherEmail: string,
+  className: string,
+) {
+  await login(page, teacherEmail);
+  await page.getByRole("link", { name: "Minhas salas" }).click();
+  await page.getByRole("link", { name: className }).click();
+  await page.getByRole("button", { name: "Liberar resultados" }).click();
+  await expect(page.getByText("resultados liberados")).toBeVisible();
+  await page.getByRole("button", { name: "Sair" }).click();
+}
+
 export async function registerStudent(page: Page, email: string) {
   await page.goto("/cadastro");
   await page.getByRole("button", { name: "Aluno" }).click();

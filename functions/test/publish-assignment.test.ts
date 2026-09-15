@@ -249,6 +249,34 @@ describe("publishAssignment (integração)", () => {
     expect(ref.startedCount).toBe(0);
   });
 
+  it("publica atividade de preencher espaços no modo TYPING sem falhar por campo undefined (regressão)", async () => {
+    // TYPING não tem wordBank - o SDK do Firestore rejeita `undefined`
+    // como valor de campo na escrita (achado ao montar o e2e da PR 4.4,
+    // functions/src/activity-types/fill-in-blanks.ts toStudentContent).
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid, { type: "FILL_IN_BLANKS" });
+    await seedItem(db, "a1", "i1", TEACHER.uid, {
+      configuration: {
+        mode: "TYPING",
+        text: "I usually {{1}} up at 7.",
+        blanks: [{ id: "1", answer: "wake" }],
+      },
+    });
+
+    const res = await call({ classId: "c1", activityId: "a1" }, TEACHER);
+
+    const assignmentSnap = await db
+      .doc(`classes/c1/assignments/${res.assignmentId}`)
+      .get();
+    const content = assignmentSnap.data()!.contentSnapshot[0].content;
+    expect(content).toEqual({
+      mode: "TYPING",
+      text: "I usually {{1}} up at 7.",
+      blankIds: ["1"],
+    });
+    expect(content).not.toHaveProperty("wordBank");
+  });
+
   it("permite atribuir a mesma atividade a duas salas (RN-012)", async () => {
     await seedClass(db, "c1", TEACHER.uid);
     await seedClass(db, "c2", TEACHER.uid);

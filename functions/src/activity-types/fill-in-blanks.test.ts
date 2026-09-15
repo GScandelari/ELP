@@ -105,8 +105,10 @@ describe("fillInBlanksHandler.toStudentContent", () => {
       mode: "TYPING",
       text: typingConfig.text,
       blankIds: ["1"],
-      wordBank: undefined,
     });
+    // a chave não pode nem existir (SDK do Firestore rejeita `undefined`
+    // como valor de campo na escrita - ver freeze-content/publishAssignment)
+    expect(view).not.toHaveProperty("wordBank");
     expect(JSON.stringify(view)).not.toContain("wake");
   });
 
