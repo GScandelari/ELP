@@ -9,11 +9,20 @@ import {
   watchActivity,
   type ActivitySummary,
 } from "@/lib/activities";
-import { watchActivityItems, type ActivityItem } from "@/lib/activity-items";
+import {
+  watchMultipleChoiceItems,
+  type MultipleChoiceItem,
+} from "@/lib/multiple-choice";
+import {
+  watchFillInBlanksItems,
+  type FillInBlanksItem,
+} from "@/lib/fill-in-blanks";
 import { RequireRole } from "@/components/require-role";
 import { EditActivityDialog } from "@/components/edit-activity-dialog";
 import { MultipleChoiceBuilder } from "@/components/multiple-choice-builder";
 import { MultipleChoiceRenderer } from "@/components/multiple-choice-renderer";
+import { FillInBlanksBuilder } from "@/components/fill-in-blanks-builder";
+import { FillInBlanksRenderer } from "@/components/fill-in-blanks-renderer";
 import { Button } from "@/components/ui/button";
 
 const STATUS_LABEL: Record<ActivitySummary["status"], string> = {
@@ -121,24 +130,38 @@ function ActivityDetail() {
           Itens ({activity.itemCount})
         </h2>
         <div className="mt-2">
-          {activity.type === "MULTIPLE_CHOICE" ? (
+          {activity.type === "MULTIPLE_CHOICE" && (
             <MultipleChoiceBuilder
               activityId={params.activityId}
               uid={user.uid}
               readOnly={activity.locked}
             />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              O construtor de itens para{" "}
-              {TYPE_LABEL[activity.type].toLowerCase()} chega numa próxima PR da
-              Fase 3.
-            </p>
           )}
+          {activity.type === "FILL_IN_BLANKS" && (
+            <FillInBlanksBuilder
+              activityId={params.activityId}
+              uid={user.uid}
+              readOnly={activity.locked}
+            />
+          )}
+          {activity.type !== "MULTIPLE_CHOICE" &&
+            activity.type !== "FILL_IN_BLANKS" && (
+              <p className="text-sm text-muted-foreground">
+                O construtor de itens para{" "}
+                {TYPE_LABEL[activity.type].toLowerCase()} chega numa próxima PR
+                da Fase 3.
+              </p>
+            )}
         </div>
       </div>
 
-      {activity.type === "MULTIPLE_CHOICE" && (
-        <ActivityPreview activityId={params.activityId} uid={user.uid} />
+      {(activity.type === "MULTIPLE_CHOICE" ||
+        activity.type === "FILL_IN_BLANKS") && (
+        <ActivityPreview
+          type={activity.type}
+          activityId={params.activityId}
+          uid={user.uid}
+        />
       )}
 
       <EditActivityDialog
@@ -239,39 +262,87 @@ function StatusActions({
  * aberto, para não pagar leitura à toa quando ninguém pediu.
  */
 function ActivityPreview({
+  type,
   activityId,
   uid,
 }: {
+  type: "MULTIPLE_CHOICE" | "FILL_IN_BLANKS";
   activityId: string;
   uid: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<ActivityItem[] | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    return watchActivityItems(activityId, uid, setItems);
-  }, [open, activityId, uid]);
 
   return (
     <div className="mt-6 rounded-lg border border-border p-4">
       <Button size="sm" variant="outline" onClick={() => setOpen((v) => !v)}>
         {open ? "Ocultar" : "Mostrar"} pré-visualização do aluno
       </Button>
-      {open && (
-        <div className="mt-3">
-          {items === null ? (
-            <p className="text-sm text-muted-foreground">Carregando…</p>
-          ) : (
-            <MultipleChoiceRenderer
-              items={items.map((i) => ({
-                question: i.configuration.question,
-                options: i.configuration.options,
-              }))}
-            />
-          )}
-        </div>
-      )}
+      {open &&
+        (type === "MULTIPLE_CHOICE" ? (
+          <MultipleChoicePreview activityId={activityId} uid={uid} />
+        ) : (
+          <FillInBlanksPreview activityId={activityId} uid={uid} />
+        ))}
+    </div>
+  );
+}
+
+function MultipleChoicePreview({
+  activityId,
+  uid,
+}: {
+  activityId: string;
+  uid: string;
+}) {
+  const [items, setItems] = useState<MultipleChoiceItem[] | null>(null);
+
+  useEffect(
+    () => watchMultipleChoiceItems(activityId, uid, setItems),
+    [activityId, uid],
+  );
+
+  if (items === null) {
+    return <p className="mt-3 text-sm text-muted-foreground">Carregando…</p>;
+  }
+  return (
+    <div className="mt-3">
+      <MultipleChoiceRenderer
+        items={items.map((i) => ({
+          question: i.configuration.question,
+          options: i.configuration.options,
+        }))}
+      />
+    </div>
+  );
+}
+
+function FillInBlanksPreview({
+  activityId,
+  uid,
+}: {
+  activityId: string;
+  uid: string;
+}) {
+  const [items, setItems] = useState<FillInBlanksItem[] | null>(null);
+
+  useEffect(
+    () => watchFillInBlanksItems(activityId, uid, setItems),
+    [activityId, uid],
+  );
+
+  if (items === null) {
+    return <p className="mt-3 text-sm text-muted-foreground">Carregando…</p>;
+  }
+  return (
+    <div className="mt-3">
+      <FillInBlanksRenderer
+        items={items.map((i) => ({
+          mode: i.configuration.mode,
+          text: i.configuration.text,
+          blankIds: i.configuration.blanks.map((b) => b.id),
+          wordBank: i.configuration.wordBank,
+        }))}
+      />
     </div>
   );
 }

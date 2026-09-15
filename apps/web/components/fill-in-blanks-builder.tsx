@@ -2,24 +2,33 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { MultipleChoiceItemDialog } from "@/components/multiple-choice-item-dialog";
+import { FillInBlanksItemDialog } from "@/components/fill-in-blanks-item-dialog";
 import {
   deleteActivityItem,
   swapActivityItemPositions,
 } from "@/lib/activity-items";
 import {
-  addMultipleChoiceItem,
-  updateMultipleChoiceItem,
-  watchMultipleChoiceItems,
-  type MultipleChoiceItem,
-} from "@/lib/multiple-choice";
+  addFillInBlanksItem,
+  updateFillInBlanksItem,
+  watchFillInBlanksItems,
+  type FillInBlanksItem,
+} from "@/lib/fill-in-blanks";
+
+/** Mostra o texto com as respostas entre colchetes, pra visão do dono. */
+function renderWithAnswers(item: FillInBlanksItem): string {
+  const blanksById = new Map(item.configuration.blanks.map((b) => [b.id, b]));
+  return item.configuration.text.replace(/\{\{([^}]+)\}\}/g, (match, id) => {
+    const blank = blanksById.get(id);
+    return blank ? `[${blank.answer}]` : match;
+  });
+}
 
 /**
- * Builder + preview do dono para o tipo Multiple Choice (RF-009/9.4).
+ * Builder + preview do dono para o tipo Fill in the Blanks (RF-009/9.1).
  * `readOnly` esconde as ações de edição — usado quando a atividade está
- * `locked` (ADR-014): o professor ainda vê as questões, mas não mexe.
+ * `locked` (ADR-014).
  */
-export function MultipleChoiceBuilder({
+export function FillInBlanksBuilder({
   activityId,
   uid,
   readOnly = false,
@@ -28,12 +37,12 @@ export function MultipleChoiceBuilder({
   uid: string;
   readOnly?: boolean;
 }) {
-  const [items, setItems] = useState<MultipleChoiceItem[] | null>(null);
+  const [items, setItems] = useState<FillInBlanksItem[] | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<MultipleChoiceItem | null>(null);
+  const [editing, setEditing] = useState<FillInBlanksItem | null>(null);
 
   useEffect(
-    () => watchMultipleChoiceItems(activityId, uid, setItems),
+    () => watchFillInBlanksItems(activityId, uid, setItems),
     [activityId, uid],
   );
 
@@ -45,7 +54,7 @@ export function MultipleChoiceBuilder({
     <div>
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
-          {items.length} {items.length === 1 ? "questão" : "questões"}
+          {items.length} {items.length === 1 ? "item" : "itens"}
         </p>
         {!readOnly && (
           <Button
@@ -55,38 +64,24 @@ export function MultipleChoiceBuilder({
               setDialogOpen(true);
             }}
           >
-            Adicionar questão
+            Adicionar item
           </Button>
         )}
       </div>
 
       {items.length === 0 && (
-        <p className="mt-3 text-sm text-muted-foreground">
-          Nenhuma questão ainda.
-        </p>
+        <p className="mt-3 text-sm text-muted-foreground">Nenhum item ainda.</p>
       )}
 
-      <ul aria-label="Questões cadastradas" className="mt-3 space-y-3">
+      <ul aria-label="Itens cadastrados" className="mt-3 space-y-3">
         {items.map((item, index) => (
           <li key={item.id} className="rounded-md border border-border p-3">
-            <p className="font-medium">{item.configuration.question}</p>
-            <ul className="mt-2 space-y-1 text-sm">
-              {item.configuration.options.map((option, i) => (
-                <li
-                  key={i}
-                  className={
-                    i === item.configuration.correctIndex
-                      ? "font-medium text-green-700"
-                      : "text-muted-foreground"
-                  }
-                >
-                  {i === item.configuration.correctIndex ? "✓ " : "— "}
-                  {option}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {item.points} {item.points === 1 ? "ponto" : "pontos"}
+            <p className="font-medium">{renderWithAnswers(item)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {item.configuration.mode === "WORD_BANK"
+                ? "Banco de palavras"
+                : "Digitar a resposta"}{" "}
+              · {item.points} {item.points === 1 ? "ponto" : "pontos"}
             </p>
 
             {!readOnly && (
@@ -133,7 +128,7 @@ export function MultipleChoiceBuilder({
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    if (confirm("Remover esta questão?")) {
+                    if (confirm("Remover este item?")) {
                       void deleteActivityItem(activityId, item.id);
                     }
                   }}
@@ -147,7 +142,7 @@ export function MultipleChoiceBuilder({
       </ul>
 
       {!readOnly && (
-        <MultipleChoiceItemDialog
+        <FillInBlanksItemDialog
           open={dialogOpen}
           onClose={() => setDialogOpen(false)}
           initial={
@@ -157,8 +152,8 @@ export function MultipleChoiceBuilder({
           }
           onSubmit={(input) =>
             editing
-              ? updateMultipleChoiceItem(activityId, editing.id, input)
-              : addMultipleChoiceItem(activityId, uid, items.length, input)
+              ? updateFillInBlanksItem(activityId, editing.id, input)
+              : addFillInBlanksItem(activityId, uid, items.length, input)
           }
         />
       )}

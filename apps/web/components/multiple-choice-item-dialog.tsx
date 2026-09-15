@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import type { MultipleChoiceItemInput } from "@/lib/activity-items";
+import type { MultipleChoiceItemInput } from "@/lib/multiple-choice";
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
