@@ -17,45 +17,35 @@ import {
 import { getFirebase } from "@/lib/firebase";
 
 /**
- * `configuration` do item — só Multiple Choice existe até agora (PR 3.3).
- * Os outros tipos chegam nas próximas PRs da Fase 3, cada um com o
- * próprio módulo (mesmo padrão de `lib/classes.ts`/`lib/activities.ts`).
+ * CRUD de itens genérico — o formato de `configuration` é por tipo (ver
+ * `lib/multiple-choice.ts`, `lib/fill-in-blanks.ts`, ...), essas operações
+ * (observar, criar, editar, remover, reordenar) não precisam saber qual.
  */
-export type MultipleChoiceConfig = {
-  question: string;
-  options: string[];
-  correctIndex: number;
-};
-
-export type ActivityItem = {
+export type ActivityItem<TConfig = unknown> = {
   id: string;
   position: number;
   points: number;
-  configuration: MultipleChoiceConfig;
+  configuration: TConfig;
 };
 
-function mapItem(
+function mapItem<TConfig>(
   id: string,
   data: DocumentData | undefined,
-): ActivityItem | null {
+): ActivityItem<TConfig> | null {
   if (!data) return null;
   return {
     id,
     position: data.position ?? 0,
     points: data.points ?? 1,
-    configuration: data.configuration ?? {
-      question: "",
-      options: [],
-      correctIndex: 0,
-    },
+    configuration: (data.configuration ?? {}) as TConfig,
   };
 }
 
 /** Observa os itens de uma atividade, em ordem. */
-export function watchActivityItems(
+export function watchActivityItems<TConfig = unknown>(
   activityId: string,
   uid: string,
-  onChange: (items: ActivityItem[]) => void,
+  onChange: (items: ActivityItem<TConfig>[]) => void,
 ): Unsubscribe {
   const { db } = getFirebase();
   const q = query(
@@ -68,29 +58,31 @@ export function watchActivityItems(
     (snap) => {
       onChange(
         snap.docs
-          .map((d) => mapItem(d.id, d.data()))
-          .filter((i): i is ActivityItem => i !== null),
+          .map((d) => mapItem<TConfig>(d.id, d.data()))
+          .filter((i): i is ActivityItem<TConfig> => i !== null),
       );
     },
     () => onChange([]),
   );
 }
 
-export type MultipleChoiceItemInput = {
-  configuration: MultipleChoiceConfig;
+export type ActivityItemInput<TConfig> = {
+  configuration: TConfig;
   points: number;
+  /** Resumo curto do item (ex.: o enunciado) — cada tipo calcula o próprio. */
+  prompt: string;
 };
 
 /**
  * Cria um item e incrementa `activities/{id}.itemCount` na mesma escrita
- * (writeBatch — o client SDK também tem transação/lote atômico, não é
- * só o Admin SDK). A rule de `items.create` já exige dono + não travada.
+ * (writeBatch — o client SDK também tem lote atômico, não é só o Admin
+ * SDK). A rule de `items.create` já exige dono + não travada.
  */
-export async function addMultipleChoiceItem(
+export async function addActivityItem<TConfig>(
   activityId: string,
   uid: string,
   nextPosition: number,
-  input: MultipleChoiceItemInput,
+  input: ActivityItemInput<TConfig>,
 ): Promise<void> {
   const { db } = getFirebase();
   const batch = writeBatch(db);
@@ -98,7 +90,7 @@ export async function addMultipleChoiceItem(
   batch.set(itemRef, {
     accountId: uid,
     position: nextPosition,
-    prompt: input.configuration.question,
+    prompt: input.prompt,
     configuration: input.configuration,
     points: input.points,
   });
@@ -109,14 +101,14 @@ export async function addMultipleChoiceItem(
   await batch.commit();
 }
 
-export async function updateMultipleChoiceItem(
+export async function updateActivityItem<TConfig>(
   activityId: string,
   itemId: string,
-  input: MultipleChoiceItemInput,
+  input: ActivityItemInput<TConfig>,
 ): Promise<void> {
   const { db } = getFirebase();
   await updateDoc(doc(db, "activities", activityId, "items", itemId), {
-    prompt: input.configuration.question,
+    prompt: input.prompt,
     configuration: input.configuration,
     points: input.points,
   });
@@ -138,10 +130,10 @@ export async function deleteActivityItem(
 }
 
 /** Troca a posição de dois itens (mover para cima/baixo — sem drag-and-drop, ver plano §8.3). */
-export async function swapActivityItemPositions(
+export async function swapActivityItemPositions<TConfig>(
   activityId: string,
-  a: ActivityItem,
-  b: ActivityItem,
+  a: ActivityItem<TConfig>,
+  b: ActivityItem<TConfig>,
 ): Promise<void> {
   const { db } = getFirebase();
   const batch = writeBatch(db);

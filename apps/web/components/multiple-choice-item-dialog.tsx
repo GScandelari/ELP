@@ -3,7 +3,9 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import type { MultipleChoiceItemInput } from "@/lib/activity-items";
+import { DialogFormFooter } from "@/components/ui/dialog-form-footer";
+import { PointsField } from "@/components/ui/points-field";
+import type { MultipleChoiceItemInput } from "@/lib/multiple-choice";
 
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 6;
@@ -147,40 +149,9 @@ export function MultipleChoiceItemDialog({
           )}
         </fieldset>
 
-        <div>
-          <label htmlFor="mc-points" className="block text-sm font-medium">
-            Pontos
-          </label>
-          <input
-            id="mc-points"
-            type="number"
-            min={1}
-            required
-            value={points}
-            onChange={(e) => setPoints(Number(e.target.value) || 1)}
-            className="mt-1 h-10 w-24 rounded-md border border-border bg-background px-3 text-sm"
-          />
-        </div>
+        <PointsField id="mc-points" value={points} onChange={setPoints} />
 
-        {error && (
-          <p role="alert" className="text-sm text-red-600">
-            {error}
-          </p>
-        )}
-
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={busy}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={busy}>
-            {busy ? "Salvando…" : "Salvar"}
-          </Button>
-        </div>
+        <DialogFormFooter error={error} busy={busy} onCancel={onClose} />
       </form>
     </Dialog>
   );

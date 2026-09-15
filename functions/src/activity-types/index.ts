@@ -1,6 +1,7 @@
 import { HttpsError } from "firebase-functions/v2/https";
 import type { ActivityType, ActivityTypeHandler } from "./types";
 import { multipleChoiceHandler } from "./multiple-choice";
+import { fillInBlanksHandler } from "./fill-in-blanks";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyHandler = ActivityTypeHandler<any, any, any, any>;
@@ -8,7 +9,8 @@ type AnyHandler = ActivityTypeHandler<any, any, any, any>;
 /** Registro tipo -> handler (Activity Engine, SDD seção 8). */
 const registry: Partial<Record<ActivityType, AnyHandler>> = {
   MULTIPLE_CHOICE: multipleChoiceHandler,
-  // FILL_IN_BLANKS, TRANSLATION, MEANING_MATCHING chegam nas próximas PRs da Fase 3
+  FILL_IN_BLANKS: fillInBlanksHandler,
+  // TRANSLATION, MEANING_MATCHING chegam nas próximas PRs da Fase 3
 };
 
 /** Lança `failed-precondition` para um tipo ainda sem handler registrado. */
