@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Unsubscribe } from "firebase/firestore";
 import { useAuth } from "@/lib/auth";
 import {
+  ACTIVITY_TYPE_LABEL,
   cloneActivity,
   cloneActivityErrorMessage,
   setActivityStatus,
@@ -37,13 +38,6 @@ const STATUS_LABEL: Record<ActivitySummary["status"], string> = {
   READY: "Pronta",
   LOCKED: "Travada",
   ARCHIVED: "Arquivada",
-};
-
-const TYPE_LABEL: Record<ActivitySummary["type"], string> = {
-  MULTIPLE_CHOICE: "Múltipla escolha",
-  FILL_IN_BLANKS: "Preencher espaços",
-  TRANSLATION: "Tradução/localização",
-  MEANING_MATCHING: "Relacionamento de significados",
 };
 
 /** Builder de cada tipo já disponível — todos têm o mesmo formato de props. */
@@ -156,7 +150,7 @@ function ActivityDetail() {
             </p>
           )}
           <p className="mt-1 text-sm text-muted-foreground">
-            {TYPE_LABEL[activity.type]}
+            {ACTIVITY_TYPE_LABEL[activity.type]}
           </p>
           {activity.clonedFrom && (
             <p className="mt-1 text-xs text-muted-foreground">
@@ -241,8 +235,8 @@ function ActivityDetail() {
           ) : (
             <p className="text-sm text-muted-foreground">
               O construtor de itens para{" "}
-              {TYPE_LABEL[activity.type].toLowerCase()} chega numa próxima PR da
-              Fase 3.
+              {ACTIVITY_TYPE_LABEL[activity.type].toLowerCase()} chega numa
+              próxima PR da Fase 3.
             </p>
           )}
         </div>

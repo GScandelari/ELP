@@ -24,6 +24,14 @@ export type ActivityType =
   | "TRANSLATION"
   | "MEANING_MATCHING";
 
+/** Rótulo em pt-BR de cada tipo — compartilhado por toda tela que mostra o tipo. */
+export const ACTIVITY_TYPE_LABEL: Record<ActivityType, string> = {
+  MULTIPLE_CHOICE: "Múltipla escolha",
+  FILL_IN_BLANKS: "Preencher espaços",
+  TRANSLATION: "Tradução/localização",
+  MEANING_MATCHING: "Relacionamento de significados",
+};
+
 export type ActivityDifficulty = "EASY" | "MEDIUM" | "HARD";
 
 /** Estado de autoria no repositório (ADR-012/ADR-014) — LOCKED nunca é setado pelo client. */

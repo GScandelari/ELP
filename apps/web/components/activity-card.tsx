@@ -1,18 +1,11 @@
 import Link from "next/link";
-import type { ActivitySummary } from "@/lib/activities";
+import { ACTIVITY_TYPE_LABEL, type ActivitySummary } from "@/lib/activities";
 
 const STATUS_LABEL: Record<ActivitySummary["status"], string> = {
   DRAFT: "Rascunho",
   READY: "Pronta",
   LOCKED: "Travada",
   ARCHIVED: "Arquivada",
-};
-
-const TYPE_LABEL: Record<ActivitySummary["type"], string> = {
-  MULTIPLE_CHOICE: "Múltipla escolha",
-  FILL_IN_BLANKS: "Preencher espaços",
-  TRANSLATION: "Tradução/localização",
-  MEANING_MATCHING: "Relacionamento de significados",
 };
 
 export function ActivityCard({ activity }: { activity: ActivitySummary }) {
@@ -33,7 +26,7 @@ export function ActivityCard({ activity }: { activity: ActivitySummary }) {
         </p>
       )}
       <p className="mt-3 text-sm text-muted-foreground">
-        {TYPE_LABEL[activity.type]} · {activity.itemCount}{" "}
+        {ACTIVITY_TYPE_LABEL[activity.type]} · {activity.itemCount}{" "}
         {activity.itemCount === 1 ? "item" : "itens"}
       </p>
       {activity.tags.length > 0 && (
