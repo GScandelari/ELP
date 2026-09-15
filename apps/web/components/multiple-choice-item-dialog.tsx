@@ -4,11 +4,8 @@ import { useState, type FormEvent } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { DialogFormFooter } from "@/components/ui/dialog-form-footer";
 import { PointsField } from "@/components/ui/points-field";
-import {
-  MAX_OPTIONS,
-  MIN_OPTIONS,
-  OptionsWithCorrectField,
-} from "@/components/ui/options-with-correct-field";
+import { OptionsWithCorrectField } from "@/components/ui/options-with-correct-field";
+import { useOptionsWithCorrect } from "@/lib/use-options-with-correct";
 import type { MultipleChoiceItemInput } from "@/lib/multiple-choice";
 
 export function MultipleChoiceItemDialog({
@@ -26,34 +23,20 @@ export function MultipleChoiceItemDialog({
   const [question, setQuestion] = useState(
     initial?.configuration.question ?? "",
   );
-  const [options, setOptions] = useState<string[]>(
+  const {
+    options,
+    correctIndex,
+    setCorrectIndex,
+    updateOption,
+    addOption,
+    removeOption,
+  } = useOptionsWithCorrect(
     initial?.configuration.options ?? ["", ""],
-  );
-  const [correctIndex, setCorrectIndex] = useState(
     initial?.configuration.correctIndex ?? 0,
   );
   const [points, setPoints] = useState(initial?.points ?? 1);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  function updateOption(index: number, value: string) {
-    setOptions((prev) => prev.map((o, i) => (i === index ? value : o)));
-  }
-
-  function addOption() {
-    setOptions((prev) => (prev.length < MAX_OPTIONS ? [...prev, ""] : prev));
-  }
-
-  function removeOption(index: number) {
-    setOptions((prev) => {
-      if (prev.length <= MIN_OPTIONS) return prev;
-      return prev.filter((_, i) => i !== index);
-    });
-    setCorrectIndex((prev) => {
-      if (prev === index) return 0;
-      return prev > index ? prev - 1 : prev;
-    });
-  }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

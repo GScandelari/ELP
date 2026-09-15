@@ -1,9 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { MAX_OPTIONS, MIN_OPTIONS } from "@/lib/use-options-with-correct";
 
-export const MIN_OPTIONS = 2;
-export const MAX_OPTIONS = 6;
+export { MAX_OPTIONS, MIN_OPTIONS };
 
 /**
  * Lista de alternativas com "marque a correta" (rádio) — compartilhada

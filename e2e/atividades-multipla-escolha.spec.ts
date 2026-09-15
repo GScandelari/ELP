@@ -1,27 +1,20 @@
 import { expect, test } from "@playwright/test";
 import {
+  createActivity,
+  publishActivity,
   registerTeacher,
+  showStudentPreview,
   uniqueEmail,
   waitForFunctionsEmulator,
 } from "./helpers";
 
 test.beforeAll(waitForFunctionsEmulator);
 
-async function createActivity(page: import("@playwright/test").Page) {
-  await page.getByRole("link", { name: "Minhas atividades" }).click();
-  await page.getByRole("button", { name: "Nova atividade" }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Tipo").selectOption({ label: "Múltipla escolha" });
-  await dialog.getByLabel("Título").fill("Capitais");
-  await dialog.getByRole("button", { name: "Criar atividade" }).click();
-  await expect(page).toHaveURL(/\/atividades\/[^/]+$/);
-}
-
 test("professor: monta uma atividade de múltipla escolha (Activity Engine, RF-009)", async ({
   page,
 }) => {
   await registerTeacher(page, uniqueEmail("prof"));
-  await createActivity(page);
+  await createActivity(page, "Múltipla escolha", "Capitais");
 
   // primeira questão
   await page.getByRole("button", { name: "Adicionar questão" }).click();
@@ -40,8 +33,7 @@ test("professor: monta uma atividade de múltipla escolha (Activity Engine, RF-0
   await expect(page.getByText("2 pontos")).toBeVisible();
 
   // com item, já dá pra marcar como pronta
-  await page.getByRole("button", { name: "Marcar como pronta" }).click();
-  await expect(page.getByText("Pronta", { exact: true })).toBeVisible();
+  await publishActivity(page);
 
   // segunda questão
   await page.getByRole("button", { name: "Adicionar questão" }).click();
@@ -68,9 +60,7 @@ test("professor: monta uma atividade de múltipla escolha (Activity Engine, RF-0
   // pré-visualização do aluno não mostra a resposta certa (só o builder,
   // acima, mostra — a contagem do marcador "✓" não pode dobrar ao abrir)
   await expect(page.getByText("✓ Tóquio")).toHaveCount(1);
-  await page
-    .getByRole("button", { name: "Mostrar pré-visualização do aluno" })
-    .click();
+  await showStudentPreview(page);
   await expect(page.getByText("Tóquio").last()).toBeVisible();
   await expect(page.getByText("✓ Tóquio")).toHaveCount(1);
 
