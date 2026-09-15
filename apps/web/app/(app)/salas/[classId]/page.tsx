@@ -12,11 +12,16 @@ import {
   type ClassSummary,
   type RosterEntry,
 } from "@/lib/classes";
+import {
+  watchClassAssignments,
+  type AssignmentSummary,
+} from "@/lib/assignments";
 import { RequireRole } from "@/components/require-role";
 import { EnrollmentCodeBadge } from "@/components/enrollment-code-badge";
 import { AddStudentDialog } from "@/components/add-student-dialog";
 import { EditClassDialog } from "@/components/edit-class-dialog";
 import { StudentRoster } from "@/components/student-roster";
+import { AssignmentList } from "@/components/assignment-list";
 import { Button } from "@/components/ui/button";
 
 const STATUS_LABEL: Record<ClassSummary["status"], string> = {
@@ -39,6 +44,7 @@ function ClassDetail() {
   const [klass, setKlass] = useState<ClassSummary | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
+  const [assignments, setAssignments] = useState<AssignmentSummary[]>([]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
@@ -54,6 +60,11 @@ function ClassDetail() {
   useEffect(() => {
     if (!user) return;
     return watchRoster(params.classId, user.uid, setRoster);
+  }, [params.classId, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    return watchClassAssignments(params.classId, user.uid, setAssignments);
   }, [params.classId, user]);
 
   if (!loaded) {
@@ -129,6 +140,13 @@ function ClassDetail() {
           </Button>
         </div>
         <StudentRoster classId={params.classId} roster={roster} />
+      </div>
+
+      <div className="mt-6 rounded-lg border border-border p-4">
+        <h2 className="text-sm font-medium text-muted-foreground">
+          Atividades atribuídas ({assignments.length})
+        </h2>
+        <AssignmentList assignments={assignments} />
       </div>
 
       <AddStudentDialog

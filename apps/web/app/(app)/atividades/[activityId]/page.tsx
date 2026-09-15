@@ -15,8 +15,10 @@ import { watchMultipleChoiceItems } from "@/lib/multiple-choice";
 import { watchFillInBlanksItems } from "@/lib/fill-in-blanks";
 import { watchTranslationItems } from "@/lib/translation";
 import { watchMeaningMatchingItems } from "@/lib/meaning-matching";
+import { shuffled } from "@/lib/shuffle";
 import { RequireRole } from "@/components/require-role";
 import { EditActivityDialog } from "@/components/edit-activity-dialog";
+import { PublishAssignmentDialog } from "@/components/publish-assignment-dialog";
 import { MultipleChoiceBuilder } from "@/components/multiple-choice-builder";
 import { MultipleChoiceRenderer } from "@/components/multiple-choice-renderer";
 import { FillInBlanksBuilder } from "@/components/fill-in-blanks-builder";
@@ -86,6 +88,7 @@ function ActivityDetail() {
   const [activity, setActivity] = useState<ActivitySummary | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
 
   useEffect(
     () =>
@@ -157,6 +160,11 @@ function ActivityDetail() {
             Editar
           </Button>
           <StatusActions activityId={params.activityId} activity={activity} />
+          {activity.status === "READY" && (
+            <Button size="sm" onClick={() => setPublishOpen(true)}>
+              Atribuir a sala(s)
+            </Button>
+          )}
         </div>
       )}
 
@@ -194,6 +202,11 @@ function ActivityDetail() {
         activity={activity}
         open={editOpen}
         onClose={() => setEditOpen(false)}
+      />
+      <PublishAssignmentDialog
+        activityId={params.activityId}
+        open={publishOpen}
+        onClose={() => setPublishOpen(false)}
       />
     </div>
   );
@@ -371,7 +384,14 @@ function ActivityPreviewContent({
       activityId={activityId}
       uid={uid}
       watchItems={watchMeaningMatchingItems}
-      mapItem={(i) => ({ pairs: i.configuration.pairs })}
+      mapItem={(i) => ({
+        leftItems: shuffled(
+          i.configuration.pairs.map((p) => ({ id: p.id, left: p.left })),
+        ),
+        rightItems: shuffled(
+          i.configuration.pairs.map((p) => ({ id: p.id, right: p.right })),
+        ),
+      })}
       Renderer={MeaningMatchingRenderer}
     />
   );

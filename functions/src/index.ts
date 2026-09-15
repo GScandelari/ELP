@@ -11,6 +11,7 @@ export { joinClassByCode } from "./classes/join-class-by-code";
 export { addStudentToClass } from "./classes/add-student-to-class";
 export { removeStudentFromClass } from "./classes/remove-student-from-class";
 export { rotateEnrollmentCode } from "./classes/rotate-enrollment-code";
+export { publishAssignment } from "./activities/publish-assignment";
 
 /*
  * -------------------------------------------------------------------------
@@ -19,7 +20,6 @@ export { rotateEnrollmentCode } from "./classes/rotate-enrollment-code";
  * auth/
  *   recordConsent            (embutido em finalizeSignup por enquanto)
  * activities/
- *   publishAssignment        valida (RN-006); congela contentSnapshot + assignmentKeys
  *   cloneActivity            duplica atividade + itens (ADR-014)
  *   swapAssignmentActivity   troca a atividade de um assignment com startedCount == 0
  *   releaseAssignmentResults liberação de resultados aos alunos (ADR-013)
