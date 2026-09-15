@@ -130,3 +130,93 @@ export function publishAssignmentErrorMessage(err: unknown): string {
   }
   return "Não foi possível atribuir a atividade. Tente novamente.";
 }
+
+export type AssignmentRef = {
+  classId: string;
+  className: string;
+  assignmentId: string;
+  status: AssignmentStatus;
+  startedCount: number;
+};
+
+function mapAssignmentRef(data: DocumentData | undefined): AssignmentRef | null {
+  if (!data) return null;
+  return {
+    classId: data.classId ?? "",
+    className: data.className ?? "",
+    assignmentId: data.assignmentId ?? "",
+    status: data.status ?? "PUBLISHED",
+    startedCount: data.startedCount ?? 0,
+  };
+}
+
+/**
+ * Observa em quais salas uma atividade está atribuída (índice reverso
+ * mantido por `publishAssignment`/`swapAssignmentActivity` — ADR-014 §7,
+ * tela "Aplicar esta versão").
+ */
+export function watchAssignmentRefs(
+  activityId: string,
+  uid: string,
+  onChange: (refs: AssignmentRef[]) => void,
+): Unsubscribe {
+  const { db } = getFirebase();
+  const q = query(
+    collection(db, "activities", activityId, "assignmentRefs"),
+    where("accountId", "==", uid),
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      onChange(
+        snap.docs
+          .map((d) => mapAssignmentRef(d.data()))
+          .filter((r): r is AssignmentRef => r !== null),
+      );
+    },
+    () => onChange([]),
+  );
+}
+
+export type SwapAssignmentActivityInput = {
+  classId: string;
+  assignmentId: string;
+  sourceActivityId: string;
+};
+
+/**
+ * Substitui a atividade de origem de um assignment sem tentativas
+ * iniciadas, via callable `swapAssignmentActivity` (ADR-014 §4/§7).
+ */
+export async function swapAssignmentActivity(
+  input: SwapAssignmentActivityInput,
+): Promise<{ ok: boolean }> {
+  const { functions } = getFirebase();
+  const fn = httpsCallable<SwapAssignmentActivityInput, { ok: boolean }>(
+    functions,
+    "swapAssignmentActivity",
+  );
+  const res = await fn(input);
+  return res.data;
+}
+
+export function swapAssignmentActivityErrorMessage(err: unknown): string {
+  if (err instanceof FirebaseError) {
+    switch (err.code) {
+      case "functions/failed-precondition":
+        return (
+          err.message ||
+          "Esta sala já começou a atividade — não é possível trocar a versão."
+        );
+      case "functions/invalid-argument":
+        return err.message || "Confira os dados da troca.";
+      case "functions/permission-denied":
+        return "Apenas professores podem trocar a atividade de uma atribuição.";
+      case "functions/not-found":
+        return "Sala, atribuição ou atividade não encontrada.";
+      default:
+        return "Não foi possível aplicar esta versão. Tente novamente.";
+    }
+  }
+  return "Não foi possível aplicar esta versão. Tente novamente.";
+}

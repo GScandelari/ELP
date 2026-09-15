@@ -7,6 +7,12 @@ import {
   initTestApp,
   wrapCallable,
 } from "./helpers";
+import {
+  VALID_MC_CONFIG,
+  seedActivity,
+  seedClass,
+  seedItem,
+} from "./activity-fixtures";
 
 type Payload = {
   classId?: unknown;
@@ -32,57 +38,6 @@ beforeEach(() => clearFirestoreEmulator());
 
 const TEACHER = { uid: "prof-1", token: { role: "teacher" } };
 const OTHER_TEACHER = { uid: "prof-2", token: { role: "teacher" } };
-
-async function seedClass(id: string, accountId: string) {
-  await db.doc(`classes/${id}`).set({
-    accountId,
-    name: "Inglês 6º ano",
-    description: "",
-    enrollmentCode: "ABC123",
-    status: "ACTIVE",
-    studentCount: 0,
-  });
-}
-
-async function seedActivity(
-  id: string,
-  accountId: string,
-  overrides: Record<string, unknown> = {},
-) {
-  await db.doc(`activities/${id}`).set({
-    accountId,
-    title: "Capitais",
-    description: "",
-    type: "MULTIPLE_CHOICE",
-    difficulty: "EASY",
-    tags: [],
-    status: "READY",
-    locked: false,
-    itemCount: 1,
-    ...overrides,
-  });
-}
-
-async function seedItem(
-  activityId: string,
-  itemId: string,
-  accountId: string,
-  configuration: Record<string, unknown>,
-) {
-  await db.doc(`activities/${activityId}/items/${itemId}`).set({
-    accountId,
-    position: 0,
-    prompt: "Qual é a capital da França?",
-    configuration,
-    points: 2,
-  });
-}
-
-const VALID_MC_CONFIG = {
-  question: "Qual é a capital da França?",
-  options: ["Londres", "Paris"],
-  correctIndex: 1,
-};
 
 describe("publishAssignment (integração)", () => {
   it("rejeita chamada sem autenticação", async () => {
@@ -110,9 +65,9 @@ describe("publishAssignment (integração)", () => {
   });
 
   it("rejeita maxAttempts inválido", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a1", TEACHER.uid);
-    await seedItem("a1", "i1", TEACHER.uid, VALID_MC_CONFIG);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid);
+    await seedItem(db, "a1", "i1", TEACHER.uid);
 
     await expect(
       call({ classId: "c1", activityId: "a1", maxAttempts: 0 }, TEACHER),
@@ -126,9 +81,9 @@ describe("publishAssignment (integração)", () => {
   });
 
   it("rejeita dueDate inválida", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a1", TEACHER.uid);
-    await seedItem("a1", "i1", TEACHER.uid, VALID_MC_CONFIG);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid);
+    await seedItem(db, "a1", "i1", TEACHER.uid);
 
     await expect(
       call(
@@ -139,71 +94,69 @@ describe("publishAssignment (integração)", () => {
   });
 
   it("rejeita atividade inexistente", async () => {
-    await seedClass("c1", TEACHER.uid);
+    await seedClass(db, "c1", TEACHER.uid);
     await expect(
       call({ classId: "c1", activityId: "nao-existe" }, TEACHER),
     ).rejects.toMatchObject({ code: "not-found" });
   });
 
   it("rejeita sala inexistente", async () => {
-    await seedActivity("a1", TEACHER.uid);
-    await seedItem("a1", "i1", TEACHER.uid, VALID_MC_CONFIG);
+    await seedActivity(db, "a1", TEACHER.uid);
+    await seedItem(db, "a1", "i1", TEACHER.uid);
     await expect(
       call({ classId: "nao-existe", activityId: "a1" }, TEACHER),
     ).rejects.toMatchObject({ code: "not-found" });
   });
 
   it("rejeita atividade de outro professor", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a1", OTHER_TEACHER.uid);
-    await seedItem("a1", "i1", OTHER_TEACHER.uid, VALID_MC_CONFIG);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", OTHER_TEACHER.uid);
+    await seedItem(db, "a1", "i1", OTHER_TEACHER.uid);
     await expect(
       call({ classId: "c1", activityId: "a1" }, TEACHER),
     ).rejects.toMatchObject({ code: "permission-denied" });
   });
 
   it("rejeita sala de outro professor", async () => {
-    await seedClass("c1", OTHER_TEACHER.uid);
-    await seedActivity("a1", TEACHER.uid);
-    await seedItem("a1", "i1", TEACHER.uid, VALID_MC_CONFIG);
+    await seedClass(db, "c1", OTHER_TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid);
+    await seedItem(db, "a1", "i1", TEACHER.uid);
     await expect(
       call({ classId: "c1", activityId: "a1" }, TEACHER),
     ).rejects.toMatchObject({ code: "permission-denied" });
   });
 
   it("rejeita atividade que não está READY", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a1", TEACHER.uid, { status: "DRAFT" });
-    await seedItem("a1", "i1", TEACHER.uid, VALID_MC_CONFIG);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid, { status: "DRAFT" });
+    await seedItem(db, "a1", "i1", TEACHER.uid);
     await expect(
       call({ classId: "c1", activityId: "a1" }, TEACHER),
     ).rejects.toMatchObject({ code: "failed-precondition" });
   });
 
   it("rejeita atividade travada (defensivo, RN-013)", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a1", TEACHER.uid, { locked: true });
-    await seedItem("a1", "i1", TEACHER.uid, VALID_MC_CONFIG);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid, { locked: true });
+    await seedItem(db, "a1", "i1", TEACHER.uid);
     await expect(
       call({ classId: "c1", activityId: "a1" }, TEACHER),
     ).rejects.toMatchObject({ code: "failed-precondition" });
   });
 
   it("rejeita atividade sem itens", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a1", TEACHER.uid);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid);
     await expect(
       call({ classId: "c1", activityId: "a1" }, TEACHER),
     ).rejects.toMatchObject({ code: "failed-precondition" });
   });
 
   it("rejeita item com configuração inválida (RN-006)", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a1", TEACHER.uid);
-    await seedItem("a1", "i1", TEACHER.uid, {
-      question: "Oi",
-      options: ["Só uma"],
-      correctIndex: 0,
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid);
+    await seedItem(db, "a1", "i1", TEACHER.uid, {
+      configuration: { question: "Oi", options: ["Só uma"], correctIndex: 0 },
     });
     await expect(
       call({ classId: "c1", activityId: "a1" }, TEACHER),
@@ -211,9 +164,9 @@ describe("publishAssignment (integração)", () => {
   });
 
   it("publica e congela contentSnapshot sem gabarito + assignmentKeys com gabarito", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedActivity("a1", TEACHER.uid);
-    await seedItem("a1", "i1", TEACHER.uid, VALID_MC_CONFIG);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid);
+    await seedItem(db, "a1", "i1", TEACHER.uid);
 
     const res = await call(
       { classId: "c1", activityId: "a1", maxAttempts: 3, allowRetry: true },
@@ -256,10 +209,10 @@ describe("publishAssignment (integração)", () => {
   });
 
   it("permite atribuir a mesma atividade a duas salas (RN-012)", async () => {
-    await seedClass("c1", TEACHER.uid);
-    await seedClass("c2", TEACHER.uid);
-    await seedActivity("a1", TEACHER.uid);
-    await seedItem("a1", "i1", TEACHER.uid, VALID_MC_CONFIG);
+    await seedClass(db, "c1", TEACHER.uid);
+    await seedClass(db, "c2", TEACHER.uid);
+    await seedActivity(db, "a1", TEACHER.uid);
+    await seedItem(db, "a1", "i1", TEACHER.uid);
 
     const res1 = await call({ classId: "c1", activityId: "a1" }, TEACHER);
     const res2 = await call({ classId: "c2", activityId: "a1" }, TEACHER);
