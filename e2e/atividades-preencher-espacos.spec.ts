@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
+  createActivity,
+  publishActivity,
   registerTeacher,
+  showStudentPreview,
   uniqueEmail,
   waitForFunctionsEmulator,
 } from "./helpers";
@@ -11,15 +14,7 @@ test("professor: monta uma atividade de preencher espaços (Activity Engine, RF-
   page,
 }) => {
   await registerTeacher(page, uniqueEmail("prof"));
-  await page.getByRole("link", { name: "Minhas atividades" }).click();
-  await page.getByRole("button", { name: "Nova atividade" }).click();
-  const createDialog = page.getByRole("dialog");
-  await createDialog
-    .getByLabel("Tipo")
-    .selectOption({ label: "Preencher espaços" });
-  await createDialog.getByLabel("Título").fill("Rotina diária");
-  await createDialog.getByRole("button", { name: "Criar atividade" }).click();
-  await expect(page).toHaveURL(/\/atividades\/[^/]+$/);
+  await createActivity(page, "Preencher espaços", "Rotina diária");
 
   // sem item, o construtor real (não o placeholder) já aparece
   await expect(page.getByText("O construtor de itens para")).toHaveCount(0);
@@ -40,13 +35,10 @@ test("professor: monta uma atividade de preencher espaços (Activity Engine, RF-
   await expect(page.getByText("Digitar a resposta")).toBeVisible();
   await expect(page.getByText("3 pontos")).toBeVisible();
 
-  await page.getByRole("button", { name: "Marcar como pronta" }).click();
-  await expect(page.getByText("Pronta", { exact: true })).toBeVisible();
+  await publishActivity(page);
 
   // pré-visualização do aluno: mostra o texto, mas sem revelar a resposta
-  await page
-    .getByRole("button", { name: "Mostrar pré-visualização do aluno" })
-    .click();
+  await showStudentPreview(page);
   await expect(page.getByText("[wake]")).toHaveCount(1); // só no builder acima
   await expect(page.locator("input:disabled").first()).toBeVisible();
 });
