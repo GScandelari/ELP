@@ -369,4 +369,43 @@ describe("firestore.rules — activities (Fase 3)", () => {
       ),
     );
   });
+
+  it("17. professor encerra um assignment PUBLISHED (RF-011)", async () => {
+    await assertSucceeds(
+      updateDoc(
+        doc(teacher(), `classes/${CLASS_ID}/assignments/${ASSIGNMENT_ID}`),
+        {
+          status: "CLOSED",
+        },
+      ),
+    );
+  });
+
+  it("18. professor não muda contentSnapshot/activityId por escrita direta (só swapAssignmentActivity)", async () => {
+    await assertFails(
+      updateDoc(
+        doc(teacher(), `classes/${CLASS_ID}/assignments/${ASSIGNMENT_ID}`),
+        {
+          activityId: "outra-atividade",
+        },
+      ),
+    );
+    await assertFails(
+      updateDoc(
+        doc(teacher(), `classes/${CLASS_ID}/assignments/${ASSIGNMENT_ID}`),
+        {
+          contentSnapshot: [],
+        },
+      ),
+    );
+  });
+
+  it("19. outro professor não encerra o assignment", async () => {
+    await assertFails(
+      updateDoc(
+        doc(otherTeacher(), `classes/${CLASS_ID}/assignments/${ASSIGNMENT_ID}`),
+        { status: "CLOSED" },
+      ),
+    );
+  });
 });
