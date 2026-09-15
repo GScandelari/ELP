@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { HttpsError } from "firebase-functions/v2/https";
 import type { ActivityTypeHandler } from "./types";
 
@@ -30,9 +31,12 @@ export type MeaningMatchingAnswer = {
 };
 
 function shuffled<T>(items: T[]): T[] {
+  // embaralho de exibição, não é segredo criptográfico — mas o
+  // Math.random() dispara o alerta de PRNG inseguro do SonarCloud
+  // (S2245), então uso randomInt (node:crypto) pra já nascer limpo.
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = randomInt(i + 1);
     [copy[i], copy[j]] = [copy[j]!, copy[i]!];
   }
   return copy;

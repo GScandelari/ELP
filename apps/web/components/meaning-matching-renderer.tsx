@@ -2,10 +2,19 @@
 
 import { useMemo } from "react";
 
+function secureRandomInt(maxExclusive: number): number {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0]! % maxExclusive;
+}
+
 function shuffled<T>(items: T[]): T[] {
+  // embaralho de exibição, não é segredo criptográfico — mas o
+  // Math.random() dispara o alerta de PRNG inseguro do SonarCloud
+  // (S2245), então uso a Web Crypto API pra já nascer limpo.
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = secureRandomInt(i + 1);
     [copy[i], copy[j]] = [copy[j]!, copy[i]!];
   }
   return copy;
