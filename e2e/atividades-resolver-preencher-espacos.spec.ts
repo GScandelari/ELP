@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import {
-  addChoiceItem,
   assignActivityToClasses,
   createActivity,
   createClass,
@@ -14,30 +13,27 @@ import {
 
 test.beforeAll(waitForFunctionsEmulator);
 
-test("aluno: resolve uma atividade de múltipla escolha, envia e vê a nota após a liberação (UC-006, RF-017)", async ({
+test("aluno: resolve uma atividade de preencher espaços, envia e vê a nota após a liberação (UC-006, RF-017)", async ({
   page,
 }) => {
   const teacherEmail = uniqueEmail("prof");
   const studentEmail = uniqueEmail("aluno");
 
-  // professor: cria sala, atividade pronta e atribui
+  // professor: cria sala, atividade pronta (modo digitar) e atribui
   await registerTeacher(page, teacherEmail);
   await createClass(page, "Inglês 6º ano");
   const code = await page.getByText(/^[A-Z0-9]{3}-[A-Z0-9]{3}$/).innerText();
 
   await page.getByRole("link", { name: "ELP" }).click();
-  await createActivity(page, "Múltipla escolha", "Capitais");
-  await addChoiceItem(
-    page,
-    "Adicionar questão",
-    [
-      { label: "Enunciado", value: "Qual é a capital da França?" },
-      { label: "Alternativa 1", value: "Londres" },
-      { label: "Alternativa 2", value: "Paris" },
-    ],
-    "Alternativa 2 é a correta",
-    "2",
-  );
+  await createActivity(page, "Preencher espaços", "Rotina diária");
+  await page.getByRole("button", { name: "Adicionar item" }).click();
+  const itemDialog = page.getByRole("dialog");
+  await itemDialog.getByLabel("Texto").fill("I usually wake up at 7 o'clock.");
+  await itemDialog.getByRole("button", { name: "wake", exact: true }).click();
+  await itemDialog.getByLabel("Pontos").fill("3");
+  await itemDialog.getByRole("button", { name: "Salvar" }).click();
+  await expect(itemDialog).toBeHidden();
+
   await publishActivity(page);
   await assignActivityToClasses(page, ["Inglês 6º ano"]);
 
@@ -49,17 +45,17 @@ test("aluno: resolve uma atividade de múltipla escolha, envia e vê a nota apó
     studentEmail,
     code,
     "Inglês 6º ano",
-    "Capitais",
+    "Rotina diária",
   );
 
-  await page.getByLabel("Paris (questão 1)").check();
+  await page.getByLabel("Espaço 1 da questão 1").fill("wake");
 
   await submitAndVerifyReleasedScore(
     page,
     teacherEmail,
     studentEmail,
     "Inglês 6º ano",
-    "Capitais",
-    "Nota: 2 / 2",
+    "Rotina diária",
+    "Nota: 3 / 3",
   );
 });

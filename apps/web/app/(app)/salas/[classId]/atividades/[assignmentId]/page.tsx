@@ -29,10 +29,14 @@ import {
   MultipleChoiceAnswerable,
   type MultipleChoiceAnswer,
 } from "@/components/multiple-choice-answerable";
+import {
+  FillInBlanksAnswerable,
+  type FillInBlanksAnswer,
+} from "@/components/fill-in-blanks-answerable";
 import { Button } from "@/components/ui/button";
 
 /** Tipos que o aluno já consegue resolver — cresce um de cada vez (PRs 4.4-4.6). */
-const RESOLVABLE_TYPES: ActivityType[] = ["MULTIPLE_CHOICE"];
+const RESOLVABLE_TYPES: ActivityType[] = ["MULTIPLE_CHOICE", "FILL_IN_BLANKS"];
 
 /** Debounce de "salvar progresso" (RF-013, decisão do plano — ~800ms). */
 const SAVE_DEBOUNCE_MS = 800;
@@ -303,6 +307,26 @@ function ResolveContent({
             itemId: string,
             answer: MultipleChoiceAnswer,
           ) => void
+        }
+        disabled={disabled}
+      />
+    );
+  }
+
+  if (type === "FILL_IN_BLANKS") {
+    return (
+      <FillInBlanksAnswerable
+        items={
+          items as AssignmentContentEntry<{
+            mode: "TYPING" | "WORD_BANK";
+            text: string;
+            blankIds: string[];
+            wordBank?: string[];
+          }>[]
+        }
+        answers={answers as Record<string, FillInBlanksAnswer | undefined>}
+        onAnswerChange={
+          onAnswerChange as (itemId: string, answer: FillInBlanksAnswer) => void
         }
         disabled={disabled}
       />

@@ -116,16 +116,16 @@ export const fillInBlanksHandler: ActivityTypeHandler<
   },
 
   toStudentContent(config) {
-    // Nota para quem gravar isso no Firestore (publishAssignment, PR 3.7):
-    // `wordBank: undefined` aqui é só um valor de objeto JS, inofensivo -
-    // mas o SDK do Firestore rejeita `undefined` como valor de CAMPO na
-    // escrita (achado depurando o Builder, ver PR 3.4). Omitir a chave
-    // quando `config.wordBank` for undefined antes de gravar.
+    // O SDK do Firestore rejeita `undefined` como valor de CAMPO na escrita
+    // (achado depurando o Builder, ver PR 3.4; reconfirmado na freeze-content
+    // de publishAssignment, PR 4.4 — TYPING não tem wordBank). Por isso a
+    // chave só entra no objeto quando `config.wordBank` está definido, em
+    // vez de `wordBank: config.wordBank`.
     return {
       mode: config.mode,
       text: config.text,
       blankIds: config.blanks.map((b) => b.id),
-      wordBank: config.wordBank,
+      ...(config.wordBank ? { wordBank: config.wordBank } : {}),
     };
   },
 
