@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
-  addChoiceItem,
   assignActivityToClasses,
   createActivity,
+  createAndAssignChoiceActivity,
+  createAndAssignMeaningMatchingActivity,
   createClass,
   joinClassAndOpenAssignment,
   login,
@@ -31,16 +32,18 @@ test("fluxo completo da Fase 4 — aluno resolve os 4 tipos, professor libera re
 
   const teacherEmail = uniqueEmail("prof");
   const studentEmail = uniqueEmail("aluno");
+  const className = "Turma Completa";
 
   await registerTeacher(page, teacherEmail);
-  await createClass(page, "Turma Completa");
+  await createClass(page, className);
   const code = await page.getByText(/^[A-Z0-9]{3}-[A-Z0-9]{3}$/).innerText();
 
   // múltipla escolha — liberação manual (padrão)
-  await page.getByRole("link", { name: "ELP" }).click();
-  await createActivity(page, "Múltipla escolha", "Capitais");
-  await addChoiceItem(
+  await createAndAssignChoiceActivity(
     page,
+    [className],
+    "Múltipla escolha",
+    "Capitais",
     "Adicionar questão",
     [
       { label: "Enunciado", value: "Qual é a capital da França?" },
@@ -50,27 +53,26 @@ test("fluxo completo da Fase 4 — aluno resolve os 4 tipos, professor libera re
     "Alternativa 2 é a correta",
     "2",
   );
-  await publishActivity(page);
-  await assignActivityToClasses(page, ["Turma Completa"]);
 
   // preencher espaços (modo digitar) — liberação manual
   await page.getByRole("link", { name: "ELP" }).click();
   await createActivity(page, "Preencher espaços", "Rotina diária");
   await page.getByRole("button", { name: "Adicionar item" }).click();
-  let itemDialog = page.getByRole("dialog");
-  await itemDialog.getByLabel("Texto").fill("I usually wake up at 7 o'clock.");
-  await itemDialog.getByRole("button", { name: "wake", exact: true }).click();
-  await itemDialog.getByLabel("Pontos").fill("3");
-  await itemDialog.getByRole("button", { name: "Salvar" }).click();
-  await expect(itemDialog).toBeHidden();
+  const fibDialog = page.getByRole("dialog");
+  await fibDialog.getByLabel("Texto").fill("I usually wake up at 7 o'clock.");
+  await fibDialog.getByRole("button", { name: "wake", exact: true }).click();
+  await fibDialog.getByLabel("Pontos").fill("3");
+  await fibDialog.getByRole("button", { name: "Salvar" }).click();
+  await expect(fibDialog).toBeHidden();
   await publishActivity(page);
-  await assignActivityToClasses(page, ["Turma Completa"]);
+  await assignActivityToClasses(page, [className]);
 
   // tradução/localização (modo padrão) — liberação manual
-  await page.getByRole("link", { name: "ELP" }).click();
-  await createActivity(page, "Tradução/localização", "Vocabulário básico");
-  await addChoiceItem(
+  await createAndAssignChoiceActivity(
     page,
+    [className],
+    "Tradução/localização",
+    "Vocabulário básico",
     "Adicionar item",
     [
       { label: "Palavra ou frase a traduzir", value: "casa" },
@@ -80,29 +82,19 @@ test("fluxo completo da Fase 4 — aluno resolve os 4 tipos, professor libera re
     "Opção 1 é a correta",
     "2",
   );
-  await publishActivity(page);
-  await assignActivityToClasses(page, ["Turma Completa"]);
 
   // relacionamento de significados — liberação automática ao encerrar (ADR-013)
-  await page.getByRole("link", { name: "ELP" }).click();
-  await createActivity(
+  await createAndAssignMeaningMatchingActivity(
     page,
-    "Relacionamento de significados",
+    [className],
     "Animais e cores",
+    [
+      { term: "cat", meaning: "gato" },
+      { term: "dog", meaning: "cachorro" },
+    ],
+    "4",
+    { resultsPolicy: "Automaticamente ao encerrar" },
   );
-  await page.getByRole("button", { name: "Adicionar item" }).click();
-  itemDialog = page.getByRole("dialog");
-  await itemDialog.getByLabel("Termo 1").fill("cat");
-  await itemDialog.getByLabel("Significado 1").fill("gato");
-  await itemDialog.getByLabel("Termo 2").fill("dog");
-  await itemDialog.getByLabel("Significado 2").fill("cachorro");
-  await itemDialog.getByLabel("Pontos").fill("4");
-  await itemDialog.getByRole("button", { name: "Salvar" }).click();
-  await expect(itemDialog).toBeHidden();
-  await publishActivity(page);
-  await assignActivityToClasses(page, ["Turma Completa"], {
-    resultsPolicy: "Automaticamente ao encerrar",
-  });
 
   await page.getByRole("button", { name: "Sair" }).click();
 
@@ -111,7 +103,7 @@ test("fluxo completo da Fase 4 — aluno resolve os 4 tipos, professor libera re
     page,
     studentEmail,
     code,
-    "Turma Completa",
+    className,
     "Capitais",
   );
   await page.getByLabel("Paris (questão 1)").check();
@@ -160,7 +152,7 @@ test("fluxo completo da Fase 4 — aluno resolve os 4 tipos, professor libera re
   // (libera sozinho, por ON_CLOSE)
   await page.getByRole("link", { name: "ELP" }).click();
   await page.getByRole("link", { name: "Minhas salas" }).click();
-  await page.getByRole("link", { name: "Turma Completa" }).click();
+  await page.getByRole("link", { name: className }).click();
 
   const assignments = page.getByRole("list", { name: "Atividades atribuídas" });
   for (const title of ["Capitais", "Rotina diária", "Vocabulário básico"]) {
@@ -185,7 +177,7 @@ test("fluxo completo da Fase 4 — aluno resolve os 4 tipos, professor libera re
   // aluno: revisita cada atividade e vê a nota certa
   await login(page, studentEmail);
   await page.getByRole("link", { name: "Minhas salas" }).click();
-  await page.getByRole("link", { name: "Turma Completa" }).click();
+  await page.getByRole("link", { name: className }).click();
 
   await page.getByRole("link", { name: "Capitais" }).click();
   await expect(page.getByText("Nota: 2 / 2")).toBeVisible();

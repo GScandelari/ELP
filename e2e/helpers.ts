@@ -150,13 +150,73 @@ export async function setupChoiceActivityAssignedToClass(
   await createClass(page, className);
   const code = await page.getByText(/^[A-Z0-9]{3}-[A-Z0-9]{3}$/).innerText();
 
+  await createAndAssignChoiceActivity(
+    page,
+    [className],
+    typeLabel,
+    activityTitle,
+    addButtonName,
+    fields,
+    correctLabel,
+    points,
+  );
+
+  return code;
+}
+
+/**
+ * Cria e atribui uma atividade "escolha a alternativa certa" (Multiple
+ * Choice, Translation) com um item — dentro de uma sessão de professor
+ * que já tem sala(s) (ao contrário de `setupChoiceActivityAssignedToClass`,
+ * não registra professor nem cria sala). Compartilhado pelos specs
+ * "fim a fim" que montam várias atividades na mesma sessão.
+ */
+export async function createAndAssignChoiceActivity(
+  page: Page,
+  classNames: string[],
+  typeLabel: string,
+  activityTitle: string,
+  addButtonName: string,
+  fields: { label: string; value: string }[],
+  correctLabel: string,
+  points: string,
+  assignOptions: { maxAttempts?: string; resultsPolicy?: string } = {},
+) {
   await page.getByRole("link", { name: "ELP" }).click();
   await createActivity(page, typeLabel, activityTitle);
   await addChoiceItem(page, addButtonName, fields, correctLabel, points);
   await publishActivity(page);
-  await assignActivityToClasses(page, [className]);
+  await assignActivityToClasses(page, classNames, assignOptions);
+}
 
-  return code;
+/**
+ * Cria e atribui uma atividade de Relacionamento de significados com
+ * um item de N pares — dentro de uma sessão de professor que já tem
+ * sala(s). Compartilhado pelos specs "fim a fim" da Fase 3 e da Fase 4.
+ */
+export async function createAndAssignMeaningMatchingActivity(
+  page: Page,
+  classNames: string[],
+  activityTitle: string,
+  pairs: { term: string; meaning: string }[],
+  points?: string,
+  assignOptions: { maxAttempts?: string; resultsPolicy?: string } = {},
+) {
+  await page.getByRole("link", { name: "ELP" }).click();
+  await createActivity(page, "Relacionamento de significados", activityTitle);
+  await page.getByRole("button", { name: "Adicionar item" }).click();
+  const itemDialog = page.getByRole("dialog");
+  for (const [i, pair] of pairs.entries()) {
+    await itemDialog.getByLabel(`Termo ${i + 1}`).fill(pair.term);
+    await itemDialog.getByLabel(`Significado ${i + 1}`).fill(pair.meaning);
+  }
+  if (points) {
+    await itemDialog.getByLabel("Pontos").fill(points);
+  }
+  await itemDialog.getByRole("button", { name: "Salvar" }).click();
+  await expect(itemDialog).toBeHidden();
+  await publishActivity(page);
+  await assignActivityToClasses(page, classNames, assignOptions);
 }
 
 /**
