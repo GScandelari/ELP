@@ -37,13 +37,18 @@ import {
   TranslationAnswerable,
   type TranslationAnswer,
 } from "@/components/translation-answerable";
+import {
+  MeaningMatchingAnswerable,
+  type MeaningMatchingAnswer,
+} from "@/components/meaning-matching-answerable";
 import { Button } from "@/components/ui/button";
 
-/** Tipos que o aluno já consegue resolver — cresce um de cada vez (PRs 4.4-4.6). */
+/** Tipos que o aluno já consegue resolver — os 4 do MVP (Fase 4, PRs 4.3-4.6). */
 const RESOLVABLE_TYPES: ActivityType[] = [
   "MULTIPLE_CHOICE",
   "FILL_IN_BLANKS",
   "TRANSLATION",
+  "MEANING_MATCHING",
 ];
 
 /** Debounce de "salvar progresso" (RF-013, decisão do plano — ~800ms). */
@@ -354,6 +359,27 @@ function ResolveContent({
         answers={answers as Record<string, TranslationAnswer | undefined>}
         onAnswerChange={
           onAnswerChange as (itemId: string, answer: TranslationAnswer) => void
+        }
+        disabled={disabled}
+      />
+    );
+  }
+
+  if (type === "MEANING_MATCHING") {
+    return (
+      <MeaningMatchingAnswerable
+        items={
+          items as AssignmentContentEntry<{
+            leftItems: { id: string; left: string }[];
+            rightItems: { id: string; right: string }[];
+          }>[]
+        }
+        answers={answers as Record<string, MeaningMatchingAnswer | undefined>}
+        onAnswerChange={
+          onAnswerChange as (
+            itemId: string,
+            answer: MeaningMatchingAnswer,
+          ) => void
         }
         disabled={disabled}
       />
