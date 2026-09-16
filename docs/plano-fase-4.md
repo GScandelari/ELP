@@ -259,12 +259,12 @@ Precisa de teste de rules próprio (regressão do padrão de `list` — a condi�
 |---|---|---|
 | **4.1** | `feat(attempts): fundação — rules, attemptResults, createAttempt` | ✅ Rules de `attempts`/`answers`/`attemptResults` + fix do `list` de `assignments` do aluno (§6.3); `createAttempt` (callable) com criar-ou-recuperar + trava da atividade (§3.3); testes de rules #1–14 e integração |
 | **4.2** | `feat(attempts): submitAttempt + liberação de resultados` | ✅ `submitAttempt` (callable); `releaseAssignmentResults` (callable) + ajuste no `closeAssignment` pra `ON_CLOSE`; `releaseResultsOnDueDate` (scheduled); `resultsPolicy` exposto no `PublishAssignmentDialog` (decisão 1) |
-| **4.3** | `feat(web): portal do aluno — resolver Múltipla Escolha` | `/salas/[classId]` com branch por papel; lista de assignments do aluno; tela de resolução (`createAttempt` → Renderer interativo de Múltipla Escolha → salvar progresso debounced → `submitAttempt`); confirmação de envio; E2E completo do primeiro tipo |
-| **4.4** | `feat(web): resolução interativa — Preencher espaços` | Soma o tipo à tela de resolução já existente (config-driven, mesmo padrão de crescimento da Fase 3) |
-| **4.5** | `feat(web): resolução interativa — Tradução/localização` | Idem |
-| **4.6** | `feat(web): resolução interativa — Relacionamento de significados` | Idem — fecha os 4 tipos resolvíveis pelo aluno |
-| **4.7** | `feat(web): resultado do aluno + liberar resultados (professor)` | Tela de resultado condicionada a `resultsReleased`; liga o botão "Liberar resultados" já existente na `AssignmentList` (PR 4.2) ao resultado visível pro aluno |
-| **4.8** | `feat(attempts): E2E completo + fecha a Fase 4` | E2E: aluno resolve → envia → (professor libera) → aluno vê nota; `IMPLEMENTATION-PLAN.md` marcado ✅ |
+| **4.3** | `feat(web): portal do aluno — resolver Múltipla Escolha` | ✅ `/salas/[classId]` com branch por papel; lista de assignments do aluno; tela de resolução (`createAttempt` → Renderer interativo de Múltipla Escolha → salvar progresso debounced → `submitAttempt`); confirmação de envio condicionada a `resultsReleased` (`GradedConfirmation`, já cobre o que seria a PR 4.7 — ver nota abaixo); E2E completo do primeiro tipo |
+| **4.4** | `feat(web): resolução interativa — Preencher espaços` | ✅ Soma o tipo à tela de resolução já existente (config-driven, mesmo padrão de crescimento da Fase 3) |
+| **4.5** | `feat(web): resolução interativa — Tradução/localização` | ✅ Idem |
+| **4.6** | `feat(web): resolução interativa — Relacionamento de significados` | ✅ Idem — fecha os 4 tipos resolvíveis pelo aluno |
+| ~~**4.7**~~ | ~~`feat(web): resultado do aluno + liberar resultados (professor)`~~ | **Dropada** (decisão em conversa, depois da PR 4.6): todo o escopo descrito — tela de resultado condicionada a `resultsReleased` + botão "Liberar resultados" ligado a ela — já saiu de fábrica na PR 4.3 (`GradedConfirmation`) usando o botão que a PR 4.2 já tinha criado, e já está testado E2E de ponta a ponta em cada uma das PRs 4.3–4.6 (enviar → "aguardando liberação" → professor libera → aluno revisita e vê a nota). Não sobrou código pra escrever numa PR separada — mesmo raciocínio que já tinha dropado a antiga "PR 4.7 (fiação)" depois da PR 4.2. |
+| **4.8** | `feat(attempts): E2E completo + fecha a Fase 4` | E2E abrangente (estilo `fase-3-fim-a-fim.spec.ts`): os 4 tipos + liberação numa única jornada; `IMPLEMENTATION-PLAN.md` marcado ✅ |
 
 Ordem sequencial: 4.1 e 4.2 são pré-requisito de tudo (já concluídos); 4.3 é pré-requisito de 4.4–4.8 (constrói a página que os demais reaproveitam); 4.8 fecha depois de tudo.
 
