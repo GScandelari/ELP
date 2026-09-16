@@ -19,6 +19,7 @@ import {
   createRulesTestEnv,
   OTHER_STUDENT,
   OTHER_TEACHER,
+  seedClassWithStudent,
   standardActors,
   STUDENT,
   TEACHER,
@@ -44,19 +45,7 @@ beforeEach(async () => {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
 
-    await setDoc(doc(db, `classes/${CLASS_ID}`), {
-      accountId: TEACHER,
-      name: "Turma A",
-      status: "ACTIVE",
-      studentCount: 1,
-      createdAt: new Date(),
-    });
-    await setDoc(doc(db, `classes/${CLASS_ID}/enrollments/${STUDENT}`), {
-      studentId: STUDENT,
-      accountId: TEACHER,
-      enrollmentType: "SELF_ENROLLMENT",
-      status: "ACTIVE",
-    });
+    await seedClassWithStudent(db, CLASS_ID, TEACHER, STUDENT);
 
     await setDoc(doc(db, `classes/${CLASS_ID}/assignments/${ASSIGNMENT_ID}`), {
       accountId: TEACHER,

@@ -5,6 +5,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
+import { doc, setDoc } from "firebase/firestore";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 
@@ -47,4 +48,30 @@ export function standardActors(db: ReturnType<typeof contextFactory>) {
     student: () => db(STUDENT, { role: "student" }),
     otherStudent: () => db(OTHER_STUDENT, { role: "student" }),
   };
+}
+
+/**
+ * Semeia uma sala ativa com um aluno inscrito — a base comum de vários
+ * specs de rules (`attempts`, `resultsSummary`, ...) antes de cada
+ * teste. Escreva com as regras desabilitadas (`withSecurityRulesDisabled`).
+ */
+export async function seedClassWithStudent(
+  db: ReturnType<ReturnType<typeof contextFactory>>,
+  classId: string,
+  teacherId: string,
+  studentId: string,
+) {
+  await setDoc(doc(db, `classes/${classId}`), {
+    accountId: teacherId,
+    name: "Turma A",
+    status: "ACTIVE",
+    studentCount: 1,
+    createdAt: new Date(),
+  });
+  await setDoc(doc(db, `classes/${classId}/enrollments/${studentId}`), {
+    studentId,
+    accountId: teacherId,
+    enrollmentType: "SELF_ENROLLMENT",
+    status: "ACTIVE",
+  });
 }
