@@ -1,11 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
-  addChoiceItem,
-  assignActivityToClasses,
-  createActivity,
-  createClass,
-  publishActivity,
-  registerTeacher,
+  setupChoiceActivityAssignedToClass,
   uniqueEmail,
   waitForFunctionsEmulator,
 } from "./helpers";
@@ -15,16 +10,13 @@ test.beforeAll(waitForFunctionsEmulator);
 test("professor: clona uma atividade e substitui a atribuição numa sala sem tentativas (RF-022, ADR-014)", async ({
   page,
 }) => {
-  await registerTeacher(page, uniqueEmail("prof"));
-
-  // cria uma sala
-  await createClass(page, "Inglês 6º ano");
-
-  // cria a atividade original, com um item, marca pronta e atribui à sala
-  await page.getByRole("link", { name: "ELP" }).click();
-  await createActivity(page, "Múltipla escolha", "Capitais");
-  await addChoiceItem(
+  // cria a sala e a atividade original, com um item, pronta e atribuída
+  await setupChoiceActivityAssignedToClass(
     page,
+    uniqueEmail("prof"),
+    "Inglês 6º ano",
+    "Múltipla escolha",
+    "Capitais",
     "Adicionar questão",
     [
       { label: "Enunciado", value: "Qual é a capital da França?" },
@@ -34,8 +26,6 @@ test("professor: clona uma atividade e substitui a atribuição numa sala sem te
     "Alternativa 2 é a correta",
     "2",
   );
-  await publishActivity(page);
-  await assignActivityToClasses(page, ["Inglês 6º ano"]);
 
   // clona a atividade — a cópia já vem com o item, título "(v2)"
   await page.getByRole("button", { name: "Clonar" }).click();
