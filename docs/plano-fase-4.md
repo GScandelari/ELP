@@ -264,7 +264,7 @@ Precisa de teste de rules próprio (regressão do padrão de `list` — a condi�
 | **4.5** | `feat(web): resolução interativa — Tradução/localização` | ✅ Idem |
 | **4.6** | `feat(web): resolução interativa — Relacionamento de significados` | ✅ Idem — fecha os 4 tipos resolvíveis pelo aluno |
 | ~~**4.7**~~ | ~~`feat(web): resultado do aluno + liberar resultados (professor)`~~ | **Dropada** (decisão em conversa, depois da PR 4.6): todo o escopo descrito — tela de resultado condicionada a `resultsReleased` + botão "Liberar resultados" ligado a ela — já saiu de fábrica na PR 4.3 (`GradedConfirmation`) usando o botão que a PR 4.2 já tinha criado, e já está testado E2E de ponta a ponta em cada uma das PRs 4.3–4.6 (enviar → "aguardando liberação" → professor libera → aluno revisita e vê a nota). Não sobrou código pra escrever numa PR separada — mesmo raciocínio que já tinha dropado a antiga "PR 4.7 (fiação)" depois da PR 4.2. |
-| **4.8** | `feat(attempts): E2E completo + fecha a Fase 4` | E2E abrangente (estilo `fase-3-fim-a-fim.spec.ts`): os 4 tipos + liberação numa única jornada; `IMPLEMENTATION-PLAN.md` marcado ✅ |
+| **4.8** | `feat(attempts): E2E completo + fecha a Fase 4` | ✅ E2E abrangente (estilo `fase-3-fim-a-fim.spec.ts`): os 4 tipos + liberação numa única jornada, incluindo a trava RN-013/ADR-014; corrige de quebra uma condição de corrida real encontrada montando esse E2E (restaurar respostas salvas podia apagar uma resposta que o aluno já tinha digitado, se a busca demorasse mais que a digitação); `IMPLEMENTATION-PLAN.md` marcado ✅ |
 
 Ordem sequencial: 4.1 e 4.2 são pré-requisito de tudo (já concluídos); 4.3 é pré-requisito de 4.4–4.8 (constrói a página que os demais reaproveitam); 4.8 fecha depois de tudo.
 
@@ -280,10 +280,10 @@ Ordem sequencial: 4.1 e 4.2 são pré-requisito de tudo (já concluídos); 4.3 �
 
 ## 11. Checklist de conclusão da fase
 
-- [ ] `attemptResults` (rules + `submitAttempt`) garantindo que nota/gabarito não vazam antes da liberação — testado por rules, não só por UI
-- [ ] `createAttempt` funcionando (criar, retomar, recusar por `maxAttempts`) e travando a atividade na primeira tentativa
-- [ ] `submitAttempt` corrigindo os 4 tipos via `score()` do Activity Engine
-- [ ] `releaseAssignmentResults` + política de liberação (pelo menos `ON_TEACHER_RELEASE`; `ON_DUE_DATE`/`ON_CLOSE` conforme decisão 1)
-- [ ] Portal do aluno: sala → atividade → resolver → enviar → resultado
-- [ ] E2E: aluno resolve → envia → (professor libera) → aluno vê nota
-- [ ] `docs/IMPLEMENTATION-PLAN.md` — Fase 4 marcada como ✅
+- [x] `attemptResults` (rules + `submitAttempt`) garantindo que nota/gabarito não vazam antes da liberação — testado por rules, não só por UI
+- [x] `createAttempt` funcionando (criar, retomar, recusar por `maxAttempts`) e travando a atividade na primeira tentativa
+- [x] `submitAttempt` corrigindo os 4 tipos via `score()` do Activity Engine
+- [x] `releaseAssignmentResults` + política de liberação (pelo menos `ON_TEACHER_RELEASE`; `ON_DUE_DATE`/`ON_CLOSE` conforme decisão 1)
+- [x] Portal do aluno: sala → atividade → resolver → enviar → resultado
+- [x] E2E: aluno resolve → envia → (professor libera) → aluno vê nota
+- [x] `docs/IMPLEMENTATION-PLAN.md` — Fase 4 marcada como ✅

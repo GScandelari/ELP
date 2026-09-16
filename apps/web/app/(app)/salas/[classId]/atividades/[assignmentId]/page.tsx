@@ -117,13 +117,17 @@ function ResolveAssignment() {
   }, [attemptId]);
 
   // restaura respostas já salvas ao retomar uma tentativa (uma vez só —
-  // depois disso o estado local do formulário é a fonte da verdade)
+  // depois disso o estado local do formulário é a fonte da verdade). O
+  // aluno pode responder antes dessa busca terminar (ela é assíncrona,
+  // a resposta é síncrona) — por isso funde com `...prev` por último em
+  // vez de `setAnswers(saved)`, senão a restauração, ao chegar depois,
+  // apaga silenciosamente uma resposta que o aluno já tinha digitado.
   useEffect(() => {
     if (!attemptId || answersRestored) return;
     let cancelled = false;
     fetchAttemptAnswers(attemptId).then((saved) => {
       if (!cancelled) {
-        setAnswers(saved);
+        setAnswers((prev) => ({ ...saved, ...prev }));
         setAnswersRestored(true);
       }
     });
