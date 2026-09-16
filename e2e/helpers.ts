@@ -224,6 +224,66 @@ export async function submitAndVerifyReleasedScore(
   await expect(page.getByText(expectedScoreText)).toBeVisible();
 }
 
+export type ChoiceActivityFlowParams = {
+  teacherEmail: string;
+  studentEmail: string;
+  className: string;
+  typeLabel: string;
+  activityTitle: string;
+  addButtonName: string;
+  fields: { label: string; value: string }[];
+  correctLabel: string;
+  points: string;
+  /** aria-label do rádio a marcar (a alternativa certa) na tela de resolver. */
+  answerLabel: string;
+  expectedScoreText: string;
+};
+
+/**
+ * Fluxo completo "monta -> aluno resolve -> envia -> professor libera
+ * -> aluno vê a nota" pros tipos que usam `addChoiceItem` (marcar a
+ * alternativa certa) — Múltipla Escolha e Tradução/localização no modo
+ * padrão. Um único ponto de variação (os parâmetros) evita dois specs
+ * quase idênticos, que o CPD do SonarCloud sinaliza como duplicação de
+ * new code mesmo com literais diferentes (ver docs/plano-fase-4.md).
+ */
+export async function resolveChoiceActivityAndVerifyScore(
+  page: Page,
+  params: ChoiceActivityFlowParams,
+) {
+  const code = await setupChoiceActivityAssignedToClass(
+    page,
+    params.teacherEmail,
+    params.className,
+    params.typeLabel,
+    params.activityTitle,
+    params.addButtonName,
+    params.fields,
+    params.correctLabel,
+    params.points,
+  );
+  await page.getByRole("button", { name: "Sair" }).click();
+
+  await joinClassAndOpenAssignment(
+    page,
+    params.studentEmail,
+    code,
+    params.className,
+    params.activityTitle,
+  );
+
+  await page.getByLabel(params.answerLabel).check();
+
+  await submitAndVerifyReleasedScore(
+    page,
+    params.teacherEmail,
+    params.studentEmail,
+    params.className,
+    params.activityTitle,
+    params.expectedScoreText,
+  );
+}
+
 export async function registerStudent(page: Page, email: string) {
   await page.goto("/cadastro");
   await page.getByRole("button", { name: "Aluno" }).click();
