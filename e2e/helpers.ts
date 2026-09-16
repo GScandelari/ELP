@@ -124,6 +124,37 @@ export async function addChoiceItem(
 }
 
 /**
+ * Professor: registra, cria uma sala, monta uma atividade de "escolha
+ * a alternativa certa" (Multiple Choice, Translation) com um item,
+ * marca como pronta e atribui à sala — devolve o código da sala.
+ * Compartilhado pelos specs que usam `addChoiceItem` pra montar a
+ * atividade, seja pra clonar/aplicar ou pra resolver (4.3-4.6).
+ */
+export async function setupChoiceActivityAssignedToClass(
+  page: Page,
+  teacherEmail: string,
+  className: string,
+  typeLabel: string,
+  activityTitle: string,
+  addButtonName: string,
+  fields: { label: string; value: string }[],
+  correctLabel: string,
+  points: string,
+): Promise<string> {
+  await registerTeacher(page, teacherEmail);
+  await createClass(page, className);
+  const code = await page.getByText(/^[A-Z0-9]{3}-[A-Z0-9]{3}$/).innerText();
+
+  await page.getByRole("link", { name: "ELP" }).click();
+  await createActivity(page, typeLabel, activityTitle);
+  await addChoiceItem(page, addButtonName, fields, correctLabel, points);
+  await publishActivity(page);
+  await assignActivityToClasses(page, [className]);
+
+  return code;
+}
+
+/**
  * Aluno entra numa sala pelo código e navega até um assignment
  * específico dentro dela (UC-006 passos 1-2) — compartilhado pelos
  * specs de "resolver" de cada tipo (um por PR, 4.3-4.6).
