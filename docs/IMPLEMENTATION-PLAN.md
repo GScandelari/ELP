@@ -339,14 +339,16 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 - ✅ Handlers `validate` / `toStudentContent` / `toGradingConfig` / `score` por tipo nas Cloud Functions (`score` já implementado, ainda sem uso até a Fase 4).
 - ✅ **Critério de saída:** UC-004 e UC-005 completos; professor cria uma atividade de cada tipo, atribui a duas salas, clona uma atividade e substitui a atribuição numa sala sem tentativas — coberto por `e2e/fase-3-fim-a-fim.spec.ts` (PR 3.9).
 
-### Fase 4 — Execução e Avaliação — Attempts (3–4 semanas)
+### Fase 4 — Execução e Avaliação — Attempts ✅ (PRs #23–#29)
 
-- `createAttempt` (callable) sobre um `assignment`, aplicando RN-005 (só assignment `PUBLISHED`) e RN-007 (`max_attempts` contado por assignment). Numa transação: cria o attempt, incrementa `assignment.startedCount` (grava `firstStartedAt` na primeira) e marca `activities/{activityId}.locked = true` / `status = LOCKED` (RN-013, ADR-014).
-- Salvar progresso: escrita direta e incremental do client em `attempts/{id}` enquanto `status == IN_PROGRESS`, protegida por regra que impede editar após submissão.
-- `submitAttempt` (callable) → lê `assignmentKeys` via Admin SDK, calcula `score` e `answers` server-side (RN-008), grava com `status = GRADED`. **Não retorna nota nem gabarito ao aluno se `resultsReleased == false`** (ADR-013, RN-011).
-- `releaseAssignmentResults` (callable) para o professor liberar; Cloud Function agendada para a política `ON_DUE_DATE`.
-- Tela de resultado do aluno (RF-017): mostra "enviado — aguardando liberação" ou o resultado completo, conforme `resultsReleased`; respeita RN-009.
-- **Critério de saída:** UC-006 completo; fluxo E2E "aluno resolve → submete → (professor libera) → aluno vê nota"; antes da liberação, nota e gabarito não trafegam para o aluno nem via Firestore direto.
+- ✅ `createAttempt` (callable) sobre um `assignment`, aplicando RN-005 (só assignment `PUBLISHED`) e RN-007 (`max_attempts` contado por assignment). Numa transação: cria o attempt, incrementa `assignment.startedCount` (grava `firstStartedAt` na primeira) e marca `activities/{activityId}.locked = true` / `status = LOCKED` (RN-013, ADR-014 — acionado pela primeira vez de verdade nesta fase). Criar-ou-recuperar: retoma um attempt `IN_PROGRESS` existente em vez de duplicar (PR 4.1).
+- ✅ **Nova coleção `attemptResults`, separada de `attempts`/`answers`** — a decisão central da fase (achado documentado em `docs/plano-fase-4.md` §2): nota e gabarito nunca trafegam por `attempts`/`answers`, só por `attemptResults`, com regra de `get` (nunca `list`) condicionada a `resultsReleased == true` no assignment. Verificado por teste de rules dedicado, não só por UI (PR 4.1).
+- ✅ Salvar progresso (RF-013): escrita direta e incremental do client em `attempts/{id}/answers/{itemId}` com debounce (~800ms) enquanto `status == IN_PROGRESS`, protegida por regra que impede editar após submissão (PR 4.1/4.3).
+- ✅ `submitAttempt` (callable) → lê `assignmentKeys` via Admin SDK, calcula `score` via `score()` do Activity Engine e grava `answers` (sem gabarito) + `attemptResults` (com nota) server-side (RN-008), muda o attempt para `status = GRADED`. **Não retorna nota nem gabarito ao aluno se `resultsReleased == false`** (ADR-013, RN-011) (PR 4.2).
+- ✅ **Liberação controlada de resultados (ADR-013):** `resultsPolicy` (`ON_TEACHER_RELEASE`/`ON_DUE_DATE`/`ON_CLOSE`) exposto na atribuição; `releaseAssignmentResults` (callable) para o professor liberar manualmente; `closeAssignment` libera sozinho quando a política é `ON_CLOSE`; Cloud Function agendada `releaseResultsOnDueDate` cobre `ON_DUE_DATE` (PR 4.2).
+- ✅ **Portal do aluno, construído do zero nesta fase:** `/salas/[classId]` passa a atender professor e aluno na mesma rota; lista de assignments do aluno; tela de resolução (`createAttempt`/retomar → Renderer interativo → salvar progresso debounced → `submitAttempt`); confirmação de envio mostrando "aguardando liberação" ou a nota conforme `resultsReleased` (RF-017) (PR 4.3).
+- ✅ Os 4 Renderers da Fase 3 (só leitura) ganham a versão interativa (captura de resposta), um por PR, reaproveitando o `TAnswer` que cada handler já esperava: Múltipla Escolha (PR 4.3), Preencher espaços (PR 4.4), Tradução/localização (PR 4.5), Relacionamento de significados (PR 4.6).
+- ✅ **Critério de saída:** UC-006 completo; fluxo E2E "aluno resolve os 4 tipos → submete → (professor libera, manual e por `ON_CLOSE`) → aluno vê a nota certa de cada um", incluindo a trava RN-013/ADR-014 — coberto por `e2e/fase-4-fim-a-fim.spec.ts` (PR 4.8); antes da liberação, nota e gabarito não trafegam para o aluno nem via Firestore direto (rules #10 de `attempts.rules.test.ts`, PR 4.1).
 
 ### Fase 5 — Analytics / Resultados do professor (2 semanas)
 

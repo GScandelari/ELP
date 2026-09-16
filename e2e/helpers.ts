@@ -54,7 +54,7 @@ export async function createClass(page: Page, name: string) {
 export async function assignActivityToClasses(
   page: Page,
   classNames: string[],
-  options: { maxAttempts?: string } = {},
+  options: { maxAttempts?: string; resultsPolicy?: string } = {},
 ) {
   await page.getByRole("button", { name: "Atribuir a sala(s)" }).click();
   const dialog = page.getByRole("dialog");
@@ -63,6 +63,11 @@ export async function assignActivityToClasses(
   }
   if (options.maxAttempts) {
     await dialog.getByLabel("Máximo de tentativas").fill(options.maxAttempts);
+  }
+  if (options.resultsPolicy) {
+    await dialog
+      .getByLabel("Quando liberar os resultados aos alunos")
+      .selectOption({ label: options.resultsPolicy });
   }
   await dialog.getByRole("button", { name: "Atribuir" }).click();
   await expect(dialog).toBeHidden();
