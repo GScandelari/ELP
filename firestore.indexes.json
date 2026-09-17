@@ -96,6 +96,14 @@
         { "fieldPath": "resultsPolicy", "order": "ASCENDING" },
         { "fieldPath": "resultsReleased", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
