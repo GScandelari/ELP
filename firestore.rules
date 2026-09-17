@@ -62,6 +62,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // trilha de auditoria (RNF-006, Fase 6) - so exportUserData/
+    // deleteUserData/purgeExpiredData escrevem, via Admin SDK; sem
+    // leitura pelo client (console/Admin SDK so).
+    match /auditLog/{logId} {
+      allow read, write: if false;
+    }
+
     // ---- classes ----
     match /classes/{classId} {
       // "resource.data" direto (em vez de isAccountOwner/get()) porque esta

@@ -74,4 +74,18 @@ describe("firestore.rules — smoke (ADR-005/011/012/013)", () => {
       .firestore();
     await assertFails(setDoc(doc(u, "accounts/u1"), { status: "ACTIVE" }));
   });
+
+  it("nega ao cliente ler ou escrever auditLog (Fase 6, só Admin SDK)", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "auditLog/l1"), {
+        uid: "u1",
+        action: "exportUserData",
+      });
+    });
+    const u = testEnv.authenticatedContext("u1").firestore();
+    await assertFails(getDoc(doc(u, "auditLog/l1")));
+    await assertFails(
+      setDoc(doc(u, "auditLog/l2"), { uid: "u1", action: "x" }),
+    );
+  });
 });

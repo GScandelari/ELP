@@ -19,6 +19,8 @@ export { submitAttempt } from "./attempts/submit-attempt";
 export { releaseAssignmentResults } from "./activities/release-assignment-results";
 export { releaseResultsOnDueDate } from "./activities/release-results-on-due-date";
 export { aggregateResult } from "./attempts/aggregate-result";
+export { exportUserData } from "./privacy/export-user-data";
+export { deleteUserData } from "./privacy/delete-user-data";
 
 /*
  * -------------------------------------------------------------------------
