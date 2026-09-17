@@ -21,6 +21,7 @@ export { releaseResultsOnDueDate } from "./activities/release-results-on-due-dat
 export { aggregateResult } from "./attempts/aggregate-result";
 export { exportUserData } from "./privacy/export-user-data";
 export { deleteUserData } from "./privacy/delete-user-data";
+export { purgeExpiredData } from "./privacy/purge-expired-data";
 
 /*
  * -------------------------------------------------------------------------
