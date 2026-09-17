@@ -109,12 +109,38 @@ service cloud.firestore {
           resource.data.accountId == request.auth.uid ||
           (isEnrolledStudent(classId) && resource.data.status in ['PUBLISHED', 'CLOSED'])
         );
-        // dono fecha/reabre (status) direto (RF-011), mas nao os campos
-        // que so publishAssignment/swapAssignmentActivity (Cloud Function) escrevem
+        // dono encerra um assignment PUBLISHED direto (RF-011,
+        // apps/web/lib/assignments.ts closeAssignment) - so o sentido
+        // PUBLISHED -> CLOSED, sem reabertura (o proprio closeAssignment
+        // documenta "sem volta"). O mesmo updateDoc tambem libera
+        // resultsReleased/resultsReleasedAt quando resultsPolicy ==
+        // 'ON_CLOSE' (ADR-013 §2) - por isso esses dois campos ficam de
+        // fora do lock (a Cloud Function releaseAssignmentResults/
+        // releaseResultsOnDueDate cobre as outras politicas, com o
+        // mesmo par de campos). Os demais campos abaixo nao tem nenhum
+        // caminho de escrita direta no client hoje - startedCount/
+        // firstStartedAt em particular sao o gate de RN-013 em
+        // swapAssignmentActivity ("so troca se ninguem comecou"), entao
+        // ficarem destravados deixava um professor zerar startedCount e
+        // burlar essa checagem; os demais sao configuracao congelada no
+        // publish. Travados aqui pra regra nao ficar mais permissiva do
+        // que o necessario (achado da revisao de rules, PR 6.6).
         allow update: if isAccountOwner(classId)
           && request.resource.data.accountId == resource.data.accountId
           && request.resource.data.activityId == resource.data.activityId
-          && request.resource.data.contentSnapshot == resource.data.contentSnapshot;
+          && request.resource.data.contentSnapshot == resource.data.contentSnapshot
+          && request.resource.data.type == resource.data.type
+          && request.resource.data.activityTitle == resource.data.activityTitle
+          && request.resource.data.position == resource.data.position
+          && request.resource.data.publishedAt == resource.data.publishedAt
+          && request.resource.data.dueDate == resource.data.dueDate
+          && request.resource.data.allowRetry == resource.data.allowRetry
+          && request.resource.data.maxAttempts == resource.data.maxAttempts
+          && request.resource.data.resultsPolicy == resource.data.resultsPolicy
+          && request.resource.data.startedCount == resource.data.startedCount
+          && request.resource.data.firstStartedAt == resource.data.firstStartedAt
+          && resource.data.status == 'PUBLISHED'
+          && request.resource.data.status == 'CLOSED';
         allow create, delete: if false; // so publishAssignment (Cloud Function)
       }
 

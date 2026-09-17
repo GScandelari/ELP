@@ -68,11 +68,35 @@ describe("firestore.rules — smoke (ADR-005/011/012/013)", () => {
     );
   });
 
+  it("permite ao titular ler o próprio consents e nega o de outro (Art. 18 LGPD)", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "consents/u1/records/r1"), {
+        type: "TERMS",
+      });
+    });
+    const u1 = testEnv.authenticatedContext("u1").firestore();
+    const u2 = testEnv.authenticatedContext("u2").firestore();
+    await assertSucceeds(getDoc(doc(u1, "consents/u1/records/r1")));
+    await assertFails(getDoc(doc(u2, "consents/u1/records/r1")));
+  });
+
   it("nega ao cliente escrever em accounts/{id}", async () => {
     const u = testEnv
       .authenticatedContext("u1", { role: "teacher" })
       .firestore();
     await assertFails(setDoc(doc(u, "accounts/u1"), { status: "ACTIVE" }));
+  });
+
+  it("permite ao titular ler o próprio accounts (ADR-009) e nega o de outro", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "accounts/u1"), {
+        status: "ACTIVE",
+      });
+    });
+    const u1 = testEnv.authenticatedContext("u1").firestore();
+    const u2 = testEnv.authenticatedContext("u2").firestore();
+    await assertSucceeds(getDoc(doc(u1, "accounts/u1")));
+    await assertFails(getDoc(doc(u2, "accounts/u1")));
   });
 
   it("nega ao cliente ler ou escrever auditLog (Fase 6, só Admin SDK)", async () => {
