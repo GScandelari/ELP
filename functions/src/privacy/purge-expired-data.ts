@@ -1,5 +1,6 @@
 import { getFirestore, type Query } from "firebase-admin/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { withStructuredLogging } from "../lib/logging";
 
 const SIX_MONTHS_MS = 6 * 30 * 24 * 60 * 60 * 1000;
 const FIVE_YEARS_MS = 5 * 365 * 24 * 60 * 60 * 1000;
@@ -60,5 +61,10 @@ async function purgeCollection(query: Query): Promise<number> {
 }
 
 export const purgeExpiredData = onSchedule("every 24 hours", async () => {
-  await purgeExpiredDataOnce();
+  await withStructuredLogging(
+    "purgeExpiredData",
+    {},
+    () => purgeExpiredDataOnce(),
+    (counts) => counts,
+  );
 });
