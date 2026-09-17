@@ -23,7 +23,7 @@ import { EditClassDialog } from "@/components/edit-class-dialog";
 import { StudentRoster } from "@/components/student-roster";
 import { AssignmentList } from "@/components/assignment-list";
 import { StudentAssignmentList } from "@/components/student-assignment-list";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClassName } from "@/components/ui/button";
 
 const STATUS_LABEL: Record<ClassSummary["status"], string> = {
   ACTIVE: "Ativa",
@@ -120,6 +120,12 @@ function TeacherClassDetail() {
           Editar
         </Button>
         <StatusActions classId={params.classId} status={klass.status} />
+        <Link
+          href={`/salas/${params.classId}/resultados`}
+          className={buttonClassName({ variant: "outline", size: "sm" })}
+        >
+          Ver resultados
+        </Link>
       </div>
 
       <div className="mt-6 rounded-lg border border-border p-4">
