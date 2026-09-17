@@ -8,22 +8,20 @@ import {
   rotateEnrollmentCode,
   updateClass,
   watchClass,
-  watchRoster,
   type ClassSummary,
-  type RosterEntry,
 } from "@/lib/classes";
 import {
-  watchClassAssignments,
   watchStudentClassAssignments,
   type AssignmentSummary,
 } from "@/lib/assignments";
+import { useTeacherClassData } from "@/lib/use-teacher-class-data";
 import { EnrollmentCodeBadge } from "@/components/enrollment-code-badge";
 import { AddStudentDialog } from "@/components/add-student-dialog";
 import { EditClassDialog } from "@/components/edit-class-dialog";
 import { StudentRoster } from "@/components/student-roster";
 import { AssignmentList } from "@/components/assignment-list";
 import { StudentAssignmentList } from "@/components/student-assignment-list";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClassName } from "@/components/ui/button";
 
 const STATUS_LABEL: Record<ClassSummary["status"], string> = {
   ACTIVE: "Ativa",
@@ -45,32 +43,11 @@ export default function ClassDetailPage() {
 
 function TeacherClassDetail() {
   const params = useParams<{ classId: string }>();
-  const { user } = useAuth();
-  const [klass, setKlass] = useState<ClassSummary | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [roster, setRoster] = useState<RosterEntry[]>([]);
-  const [assignments, setAssignments] = useState<AssignmentSummary[]>([]);
+  const { klass, loaded, roster, assignments } = useTeacherClassData(
+    params.classId,
+  );
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-
-  useEffect(
-    () =>
-      watchClass(params.classId, (c) => {
-        setKlass(c);
-        setLoaded(true);
-      }),
-    [params.classId],
-  );
-
-  useEffect(() => {
-    if (!user) return;
-    return watchRoster(params.classId, user.uid, setRoster);
-  }, [params.classId, user]);
-
-  useEffect(() => {
-    if (!user) return;
-    return watchClassAssignments(params.classId, user.uid, setAssignments);
-  }, [params.classId, user]);
 
   if (!loaded) {
     return <p className="text-sm text-muted-foreground">Carregando…</p>;
@@ -120,6 +97,12 @@ function TeacherClassDetail() {
           Editar
         </Button>
         <StatusActions classId={params.classId} status={klass.status} />
+        <Link
+          href={`/salas/${params.classId}/resultados`}
+          className={buttonClassName({ variant: "outline", size: "sm" })}
+        >
+          Ver resultados
+        </Link>
       </div>
 
       <div className="mt-6 rounded-lg border border-border p-4">

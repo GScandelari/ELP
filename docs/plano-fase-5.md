@@ -112,8 +112,8 @@ Substituir o bloco de `resultsSummary` (fase-0, §2) pela versão corrigida. Nen
 
 | PR | Título | Entrega |
 |---|---|---|
-| **5.1** | `feat(results): fundação — rules, resultsSummary, agregação` | Regra corrigida de `resultsSummary` (§2) + `results-summary.rules.test.ts`; Cloud Function de agregação (`onDocumentCreated`) + teste de integração |
-| **5.2** | `feat(web): dashboard de resultados do professor` | Rota `/salas/[classId]/resultados`, tabela aluno × atividade, link a partir da tela da sala; E2E completo (professor com 2 alunos/2 atividades vê a tabela certa sem liberar resultados) |
+| **5.1** | `feat(results): fundação — rules, resultsSummary, agregação` | ✅ Regra corrigida de `resultsSummary` (§2) + `results-summary.rules.test.ts`; Cloud Function de agregação (`onDocumentCreated`) + teste de integração |
+| **5.2** | `feat(web): dashboard de resultados do professor` | ✅ Rota `/salas/[classId]/resultados`, tabela aluno × atividade, link a partir da tela da sala; E2E completo (professor com aluno/2 atividades vê a tabela certa sem liberar resultados) |
 
 Só 2 PRs — a fase é pequena (uma Cloud Function de agregação + uma tela de leitura), diferente da Fase 4 (que teve 8). PR 5.1 é pré-requisito de 5.2 (a tela não tem o que mostrar sem a agregação escrevendo dados).
 
@@ -128,8 +128,8 @@ Só 2 PRs — a fase é pequena (uma Cloud Function de agregação + uma tela de
 
 ## 11. Checklist de conclusão da fase
 
-- [ ] `resultsSummary` com a regra corrigida (professor-only, `list` list-safe) — testado por rules, não só por UI
-- [ ] Cloud Function de agregação reagindo a `attemptResults`, testada por integração
-- [ ] Dashboard do professor: tabela aluno × atividade em `/salas/[classId]/resultados`, sem depender de liberação (RN-010)
-- [ ] E2E: professor com sala/alunos/atividades resolvidas revisita e vê a tabela de resultados certa
-- [ ] `docs/IMPLEMENTATION-PLAN.md` — Fase 5 marcada como ✅
+- [x] `resultsSummary` com a regra corrigida (professor-only, `list` list-safe) — testado por rules, não só por UI
+- [x] Cloud Function de agregação reagindo a `attemptResults`, testada por integração
+- [x] Dashboard do professor: tabela aluno × atividade em `/salas/[classId]/resultados`, sem depender de liberação (RN-010)
+- [x] E2E: professor com sala/alunos/atividades resolvidas revisita e vê a tabela de resultados certa
+- [x] `docs/IMPLEMENTATION-PLAN.md` — Fase 5 marcada como ✅
