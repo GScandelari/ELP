@@ -115,7 +115,15 @@ beforeEach(async () => {
       ],
       status: "PUBLISHED",
       position: 0,
+      publishedAt: new Date(),
+      dueDate: null,
+      allowRetry: false,
       maxAttempts: 1,
+      startedCount: 0,
+      firstStartedAt: null,
+      resultsPolicy: "ON_TEACHER_RELEASE",
+      resultsReleased: false,
+      resultsReleasedAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -131,7 +139,15 @@ beforeEach(async () => {
         ],
         status: "CLOSED",
         position: 1,
+        publishedAt: new Date(),
+        dueDate: null,
+        allowRetry: false,
         maxAttempts: 1,
+        startedCount: 1,
+        firstStartedAt: new Date(),
+        resultsPolicy: "ON_TEACHER_RELEASE",
+        resultsReleased: false,
+        resultsReleasedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -405,6 +421,67 @@ describe("firestore.rules — activities (Fase 3)", () => {
       updateDoc(
         doc(otherTeacher(), `classes/${CLASS_ID}/assignments/${ASSIGNMENT_ID}`),
         { status: "CLOSED" },
+      ),
+    );
+  });
+
+  it("19a. professor não reabre um assignment CLOSED por escrita direta (RF-011, sem volta)", async () => {
+    await assertFails(
+      updateDoc(
+        doc(
+          teacher(),
+          `classes/${CLASS_ID}/assignments/${CLOSED_ASSIGNMENT_ID}`,
+        ),
+        { status: "PUBLISHED" },
+      ),
+    );
+  });
+
+  it("19b. professor não muda startedCount/firstStartedAt por escrita direta (gate de RN-013 no swapAssignmentActivity)", async () => {
+    await assertFails(
+      updateDoc(
+        doc(
+          teacher(),
+          `classes/${CLASS_ID}/assignments/${CLOSED_ASSIGNMENT_ID}`,
+        ),
+        { startedCount: 0 },
+      ),
+    );
+    await assertFails(
+      updateDoc(
+        doc(
+          teacher(),
+          `classes/${CLASS_ID}/assignments/${CLOSED_ASSIGNMENT_ID}`,
+        ),
+        { firstStartedAt: null },
+      ),
+    );
+  });
+
+  it("19c. professor não muda config congelada no publish (maxAttempts/dueDate/allowRetry/resultsPolicy/position) por escrita direta", async () => {
+    await assertFails(
+      updateDoc(
+        doc(teacher(), `classes/${CLASS_ID}/assignments/${ASSIGNMENT_ID}`),
+        { maxAttempts: 5 },
+      ),
+    );
+    await assertFails(
+      updateDoc(
+        doc(teacher(), `classes/${CLASS_ID}/assignments/${ASSIGNMENT_ID}`),
+        { resultsPolicy: "ON_CLOSE" },
+      ),
+    );
+  });
+
+  it("19d. professor encerra um assignment ON_CLOSE e libera resultsReleased no mesmo updateDoc (ADR-013 §2)", async () => {
+    await assertSucceeds(
+      updateDoc(
+        doc(teacher(), `classes/${CLASS_ID}/assignments/${ASSIGNMENT_ID}`),
+        {
+          status: "CLOSED",
+          resultsReleased: true,
+          resultsReleasedAt: new Date(),
+        },
       ),
     );
   });
