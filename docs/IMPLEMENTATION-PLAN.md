@@ -350,11 +350,12 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 - ✅ Os 4 Renderers da Fase 3 (só leitura) ganham a versão interativa (captura de resposta), um por PR, reaproveitando o `TAnswer` que cada handler já esperava: Múltipla Escolha (PR 4.3), Preencher espaços (PR 4.4), Tradução/localização (PR 4.5), Relacionamento de significados (PR 4.6).
 - ✅ **Critério de saída:** UC-006 completo; fluxo E2E "aluno resolve os 4 tipos → submete → (professor libera, manual e por `ON_CLOSE`) → aluno vê a nota certa de cada um", incluindo a trava RN-013/ADR-014 — coberto por `e2e/fase-4-fim-a-fim.spec.ts` (PR 4.8); antes da liberação, nota e gabarito não trafegam para o aluno nem via Firestore direto (rules #10 de `attempts.rules.test.ts`, PR 4.1).
 
-### Fase 5 — Analytics / Resultados do professor (2 semanas)
+### Fase 5 — Analytics / Resultados do professor ✅ (PRs #30–#31)
 
-- Cloud Function que atualiza `classes/{classId}/resultsSummary/{studentId}` (indexado por `assignmentId`) a cada avaliação (padrão de agregação em escrita).
-- Telas de acompanhamento por sala/atividade/aluno (RF-018), respeitando RN-010 — o professor vê os resultados da turma independentemente da liberação para os alunos.
-- **Critério de saída:** UC-007 completo sem necessidade de ler todos os `attempts` no client.
+- ✅ **Achado da fase** (`docs/plano-fase-5.md` §2, mesma classe do achado da Fase 4): `resultsSummary` já existia no `firestore.rules` desde fase-0, nunca usado, com duas falhas — `isSelf(studentId)` vazava nota não liberada pro aluno (o resumo não respeita `resultsReleased`, é o canal do professor) e `isAccountOwner()` (`get()`) não era seguro pra `list`. Corrigido antes de qualquer código de agregação existir: `resultsSummary` fica 100% professor-only, com `list` condicionado a `accountId` denormalizado (PR 5.1).
+- ✅ Cloud Function `aggregateResult` (trigger `onDocumentCreated` de `attemptResults/{attemptId}`) atualiza `classes/{classId}/resultsSummary/{studentId}.assignmentScores.{assignmentId}` a cada avaliação (padrão de agregação em escrita) — **melhor tentativa vence** quando `allowRetry` permite mais de uma (PR 5.1).
+- ✅ Dashboard do professor (RF-018) em `/salas/[classId]/resultados`: uma tabela aluno × atividade por sala, cobrindo as 3 dimensões do RF-018 (sala/aluno/atividade) numa tela só, respeitando RN-010 — o professor vê os resultados da turma independentemente da liberação para os alunos (PR 5.2).
+- ✅ **Critério de saída:** UC-007 completo sem necessidade de ler todos os `attempts` no client — coberto por `e2e/resultados-professor.spec.ts` (PR 5.2).
 
 ### Fase 6 — Observabilidade, Segurança, Privacidade e Hardening (2–3 semanas)
 
