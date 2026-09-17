@@ -111,9 +111,21 @@ service cloud.firestore {
         allow create, delete: if false; // so publishAssignment (Cloud Function)
       }
 
+      // resumo agregado por aluno (RF-018/UC-007, Fase 5) - so o
+      // professor dono, nunca o aluno (mesmo se for o proprio): o
+      // resumo nao respeita resultsReleased (RN-010 - o professor ve a
+      // nota real sempre), entao vazaria nota nao liberada se o aluno
+      // pudesse le-lo. O canal certo do aluno e attemptResults, que
+      // respeita resultsReleased (achado documentado em
+      // docs/plano-fase-5.md secao 2).
       match /resultsSummary/{studentId} {
-        allow read: if isAccountOwner(classId) || isSelf(studentId);
-        allow write: if false; // agregacao (Cloud Function)
+        allow get: if isAccountOwner(classId);
+        // "list" (a tabela de resultados inteira) so aceita
+        // resource.data.accountId batendo com o where da query - a
+        // mesma licao de list/get de toda fase deste projeto (Fase 3
+        // secao 2/6, Fase 4 attempts): get() nao e seguro pra list.
+        allow list: if isSignedIn() && resource.data.accountId == request.auth.uid;
+        allow write: if false; // so a Cloud Function de agregacao
       }
     }
 

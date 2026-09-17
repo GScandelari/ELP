@@ -18,6 +18,7 @@ export { createAttempt } from "./attempts/create-attempt";
 export { submitAttempt } from "./attempts/submit-attempt";
 export { releaseAssignmentResults } from "./activities/release-assignment-results";
 export { releaseResultsOnDueDate } from "./activities/release-results-on-due-date";
+export { aggregateResult } from "./attempts/aggregate-result";
 
 /*
  * -------------------------------------------------------------------------
