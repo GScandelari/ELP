@@ -1,4 +1,3 @@
-import { getAuth } from "firebase-admin/auth";
 import type { Firestore } from "firebase-admin/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { exportUserData } from "../src/privacy/export-user-data";
@@ -7,6 +6,8 @@ import {
   clearFirestoreEmulator,
   cleanupTestApp,
   initTestApp,
+  itRejectsWithoutAuthOrAccount,
+  seedAuthUser,
   wrapCallable,
 } from "./helpers";
 import { seedClass } from "./activity-fixtures";
@@ -28,23 +29,8 @@ beforeEach(async () => {
   await clearAuthEmulator();
 });
 
-async function seedAuthUser(uid: string, email: string) {
-  await getAuth().createUser({ uid, email, password: "senha123456" });
-}
-
 describe("exportUserData (integração)", () => {
-  it("rejeita chamada sem autenticação", async () => {
-    await expect(call(undefined)).rejects.toMatchObject({
-      code: "unauthenticated",
-    });
-  });
-
-  it("rejeita conta inexistente", async () => {
-    await seedAuthUser("fantasma", "fantasma@example.com");
-    await expect(
-      call(undefined, { uid: "fantasma", token: { role: "student" } }),
-    ).rejects.toMatchObject({ code: "not-found" });
-  });
+  itRejectsWithoutAuthOrAccount(() => call);
 
   it("aluno: devolve conta, matrículas, tentativas (com respostas) e resultados — só os próprios", async () => {
     await seedAuthUser("aluno-1", "aluno1@example.com");

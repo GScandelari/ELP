@@ -7,6 +7,8 @@ import {
   clearFirestoreEmulator,
   cleanupTestApp,
   initTestApp,
+  itRejectsWithoutAuthOrAccount,
+  seedAuthUser,
   wrapCallable,
 } from "./helpers";
 import { seedClass } from "./activity-fixtures";
@@ -28,23 +30,8 @@ beforeEach(async () => {
   await clearAuthEmulator();
 });
 
-async function seedAuthUser(uid: string, email: string) {
-  await getAuth().createUser({ uid, email, password: "senha123456" });
-}
-
 describe("deleteUserData (integração)", () => {
-  it("rejeita chamada sem autenticação", async () => {
-    await expect(call(undefined)).rejects.toMatchObject({
-      code: "unauthenticated",
-    });
-  });
-
-  it("rejeita conta inexistente", async () => {
-    await seedAuthUser("fantasma", "fantasma@example.com");
-    await expect(
-      call(undefined, { uid: "fantasma", token: { role: "student" } }),
-    ).rejects.toMatchObject({ code: "not-found" });
-  });
+  itRejectsWithoutAuthOrAccount(() => call);
 
   it("aluno: anonimiza conta, matrículas e attempts/attemptResults; grava auditLog; exclui do Auth", async () => {
     await seedAuthUser("aluno-1", "aluno1@example.com");
