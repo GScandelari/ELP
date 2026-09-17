@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,9 @@ export function UserMenu() {
         {user?.email}
         {role ? ` · ${role}` : ""}
       </span>
+      <Link href="/conta" className="text-muted-foreground underline">
+        Minha conta
+      </Link>
       <Button
         variant="outline"
         size="sm"
