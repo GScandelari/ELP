@@ -1,8 +1,8 @@
 {
   "projects": {
-    "default": "elp-dev",
-    "dev": "elp-dev",
-    "staging": "elp-staging",
-    "prod": "elp-prod"
+    "default": "elp-dev-gs",
+    "dev": "elp-dev-gs",
+    "staging": "elp-staging-gs",
+    "prod": "elp-gs"
   }
 }
