@@ -4,16 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import {
-  watchClass,
-  watchRoster,
-  type ClassSummary,
-  type RosterEntry,
-} from "@/lib/classes";
-import {
-  watchClassAssignments,
-  type AssignmentSummary,
-} from "@/lib/assignments";
+import { useTeacherClassData } from "@/lib/use-teacher-class-data";
 import { watchResultsSummary, type ResultsSummaryEntry } from "@/lib/results";
 import { RequireRole } from "@/components/require-role";
 import { ResultsTable } from "@/components/results-table";
@@ -30,30 +21,10 @@ export default function ResultsPage() {
 function ClassResults() {
   const params = useParams<{ classId: string }>();
   const { user } = useAuth();
-  const [klass, setKlass] = useState<ClassSummary | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [roster, setRoster] = useState<RosterEntry[]>([]);
-  const [assignments, setAssignments] = useState<AssignmentSummary[]>([]);
-  const [results, setResults] = useState<ResultsSummaryEntry[]>([]);
-
-  useEffect(
-    () =>
-      watchClass(params.classId, (c) => {
-        setKlass(c);
-        setLoaded(true);
-      }),
-    [params.classId],
+  const { klass, loaded, roster, assignments } = useTeacherClassData(
+    params.classId,
   );
-
-  useEffect(() => {
-    if (!user) return;
-    return watchRoster(params.classId, user.uid, setRoster);
-  }, [params.classId, user]);
-
-  useEffect(() => {
-    if (!user) return;
-    return watchClassAssignments(params.classId, user.uid, setAssignments);
-  }, [params.classId, user]);
+  const [results, setResults] = useState<ResultsSummaryEntry[]>([]);
 
   useEffect(() => {
     if (!user) return;

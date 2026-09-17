@@ -258,6 +258,21 @@ export async function releaseResultsAsTeacher(
 
 /**
  * Aluno já respondeu (o "Enviar" da tela de resolução) — clica em
+ * enviar e confere a confirmação pendente ("aguardando liberação"),
+ * sem liberar nada. Usado por specs que testam o caminho antes da
+ * liberação (ex.: RN-010 — o professor vê a nota real mesmo sem
+ * liberar) e reaproveitado por `submitAndVerifyReleasedScore` abaixo.
+ */
+export async function submitAndVerifyPending(page: Page) {
+  await page.getByRole("button", { name: "Enviar" }).click();
+  await expect(page.getByText("Tentativa enviada.")).toBeVisible();
+  await expect(
+    page.getByText("Aguardando liberação do resultado pelo professor."),
+  ).toBeVisible();
+}
+
+/**
+ * Aluno já respondeu (o "Enviar" da tela de resolução) — clica em
  * enviar, confere a confirmação pendente, sai; professor libera os
  * resultados; aluno revisita a atividade e confere a nota final.
  * Compartilhado pelos specs de "resolver" de cada tipo (4.3-4.6):
@@ -271,12 +286,7 @@ export async function submitAndVerifyReleasedScore(
   activityTitle: string,
   expectedScoreText: string,
 ) {
-  await page.getByRole("button", { name: "Enviar" }).click();
-
-  await expect(page.getByText("Tentativa enviada.")).toBeVisible();
-  await expect(
-    page.getByText("Aguardando liberação do resultado pelo professor."),
-  ).toBeVisible();
+  await submitAndVerifyPending(page);
 
   await page.getByRole("button", { name: "Sair" }).click();
 

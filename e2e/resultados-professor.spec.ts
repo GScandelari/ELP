@@ -5,6 +5,7 @@ import {
   joinClassAndOpenAssignment,
   login,
   registerTeacher,
+  submitAndVerifyPending,
   uniqueEmail,
   waitForFunctionsEmulator,
 } from "./helpers";
@@ -22,7 +23,7 @@ test("professor: vê a tabela de resultados da sala, sem depender de liberação
 }) => {
   const teacherEmail = uniqueEmail("prof");
   const studentEmail = uniqueEmail("aluno");
-  const className = "Turma Completa";
+  const className = "Sala de Resultados";
 
   await registerTeacher(page, teacherEmail);
   await createClass(page, className);
@@ -32,30 +33,30 @@ test("professor: vê a tabela de resultados da sala, sem depender de liberação
     page,
     [className],
     "Múltipla escolha",
-    "Capitais",
+    "Números",
     "Adicionar questão",
     [
-      { label: "Enunciado", value: "Qual é a capital da França?" },
-      { label: "Alternativa 1", value: "Londres" },
-      { label: "Alternativa 2", value: "Paris" },
+      { label: "Enunciado", value: "Quantos dias tem uma semana?" },
+      { label: "Alternativa 1", value: "5" },
+      { label: "Alternativa 2", value: "7" },
     ],
     "Alternativa 2 é a correta",
-    "2",
+    "3",
   );
 
   await createAndAssignChoiceActivity(
     page,
     [className],
     "Tradução/localização",
-    "Vocabulário básico",
+    "Cores",
     "Adicionar item",
     [
-      { label: "Palavra ou frase a traduzir", value: "casa" },
-      { label: "Opção 1", value: "house" },
-      { label: "Opção 2", value: "car" },
+      { label: "Palavra ou frase a traduzir", value: "red" },
+      { label: "Opção 1", value: "vermelho" },
+      { label: "Opção 2", value: "azul" },
     ],
     "Opção 1 é a correta",
-    "2",
+    "1",
   );
 
   await page.getByRole("button", { name: "Sair" }).click();
@@ -66,17 +67,15 @@ test("professor: vê a tabela de resultados da sala, sem depender de liberação
     studentEmail,
     code,
     className,
-    "Capitais",
+    "Números",
   );
-  await page.getByLabel("Paris (questão 1)").check();
-  await page.getByRole("button", { name: "Enviar" }).click();
-  await expect(page.getByText("Tentativa enviada.")).toBeVisible();
+  await page.getByLabel("7 (questão 1)").check();
+  await submitAndVerifyPending(page);
 
   await page.getByRole("link", { name: "← Voltar para a sala" }).click();
-  await page.getByRole("link", { name: "Vocabulário básico" }).click();
-  await page.getByLabel("house (questão 1)").check();
-  await page.getByRole("button", { name: "Enviar" }).click();
-  await expect(page.getByText("Tentativa enviada.")).toBeVisible();
+  await page.getByRole("link", { name: "Cores" }).click();
+  await page.getByLabel("vermelho (questão 1)").check();
+  await submitAndVerifyPending(page);
 
   await page.getByRole("button", { name: "Sair" }).click();
 
@@ -91,12 +90,11 @@ test("professor: vê a tabela de resultados da sala, sem depender de liberação
     page.getByRole("heading", { name: `Resultados — ${className}` }),
   ).toBeVisible();
   await expect(
-    page.getByRole("columnheader", { name: "Capitais" }),
+    page.getByRole("columnheader", { name: "Números" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("columnheader", { name: "Vocabulário básico" }),
-  ).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Cores" })).toBeVisible();
 
   const row = page.getByRole("row").filter({ hasText: "Aluno E2E" });
-  await expect(row.getByRole("cell", { name: "2 / 2" })).toHaveCount(2);
+  await expect(row.getByRole("cell", { name: "3 / 3" })).toBeVisible();
+  await expect(row.getByRole("cell", { name: "1 / 1" })).toBeVisible();
 });
