@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   createAndAssignChoiceActivity,
   createClass,
+  expectNoA11yViolations,
   joinClassAndOpenAssignment,
   login,
   registerTeacher,
@@ -107,6 +108,7 @@ test("professor: vê a tabela de resultados da sala, sem depender de liberação
   await expect(
     page.getByRole("heading", { name: `Resultados — ${CLASS_NAME}` }),
   ).toBeVisible();
+  await expectNoA11yViolations(page); // RNF-007 - tabela de resultados (professor)
 
   const row = page.getByRole("row").filter({ hasText: "Aluno E2E" });
   for (const activity of ACTIVITIES) {

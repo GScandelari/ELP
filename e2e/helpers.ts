@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 
 const PING = "http://127.0.0.1:5001/demo-elp/southamerica-east1/ping";
@@ -13,6 +14,27 @@ export async function waitForFunctionsEmulator() {
 
 export function uniqueEmail(prefix: string) {
   return `${prefix}.${Date.now()}.${randomUUID().slice(0, 8)}@e2e.local`;
+}
+
+/**
+ * Roda o axe-core na página atual e falha o teste listando as
+ * violações (regra, impacto e elementos afetados) se houver alguma —
+ * auditoria de acessibilidade automatizada (RNF-007, Fase 6 PR 6.7,
+ * docs/plano-fase-6.md §7). Sem excluir nenhuma regra: o objetivo é
+ * pegar problema estrutural (contraste, label ausente, role incorreto)
+ * nas telas que os specs de E2E já visitam, sem precisar de specs
+ * dedicados só pra isso.
+ */
+export async function expectNoA11yViolations(page: Page) {
+  const { violations } = await new AxeBuilder({ page }).analyze();
+  const summary = violations
+    .map(
+      (v) =>
+        `${v.id} (${v.impact}): ${v.help}\n` +
+        v.nodes.map((n) => `  - ${n.target.join(" ")}`).join("\n"),
+    )
+    .join("\n\n");
+  expect(violations, summary).toEqual([]);
 }
 
 export async function registerTeacher(page: Page, email: string) {
@@ -346,6 +368,7 @@ export async function resolveChoiceActivityAndVerifyScore(
     params.className,
     params.activityTitle,
   );
+  await expectNoA11yViolations(page); // RNF-007 - tela de resolução (aluno)
 
   await page.getByLabel(params.answerLabel).check();
 

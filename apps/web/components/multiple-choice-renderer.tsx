@@ -24,7 +24,11 @@ export function MultipleChoiceRenderer({
           <ul className="mt-1 space-y-1 text-sm">
             {item.options.map((option, i) => (
               <li key={i} className="flex items-center gap-2">
-                <input type="radio" disabled />
+                <input
+                  type="radio"
+                  disabled
+                  aria-label={`${option} (questão ${index + 1})`}
+                />
                 <span>{option}</span>
               </li>
             ))}

@@ -3,6 +3,7 @@ import {
   assignActivityToClasses,
   createActivity,
   createClass,
+  expectNoA11yViolations,
   joinClassAndOpenAssignment,
   publishActivity,
   registerTeacher,
@@ -53,6 +54,7 @@ test("aluno: resolve uma atividade de relacionamento de significados, envia e v�
     "Turma de vocabulário",
     "Animais e cores",
   );
+  await expectNoA11yViolations(page); // RNF-007 - tela de resolução (aluno)
 
   await page
     .getByLabel('Relacionar "cat" (questão 1)')

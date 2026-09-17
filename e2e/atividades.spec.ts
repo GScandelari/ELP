@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  expectNoA11yViolations,
   registerTeacher,
   uniqueEmail,
   waitForFunctionsEmulator,
@@ -16,6 +17,7 @@ test("professor: cria, edita e arquiva uma atividade no repositório (RF-008/RF-
   await expect(
     page.getByText("Você ainda não criou nenhuma atividade."),
   ).toBeVisible();
+  await expectNoA11yViolations(page); // RNF-007 - repositório de atividades
 
   await page.getByRole("button", { name: "Nova atividade" }).click();
   const createDialog = page.getByRole("dialog");
@@ -38,6 +40,7 @@ test("professor: cria, edita e arquiva uma atividade no repositório (RF-008/RF-
     page.getByText("Passado simples dos verbos mais comuns"),
   ).toBeVisible();
   await expect(page.getByText("Rascunho", { exact: true })).toBeVisible();
+  await expectNoA11yViolations(page); // RNF-007 - tela da atividade (Builder)
 
   // sem item ainda -> não dá pra marcar como pronta
   await expect(

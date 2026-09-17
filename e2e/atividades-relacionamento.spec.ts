@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   createActivity,
+  expectNoA11yViolations,
   publishActivity,
   registerTeacher,
   showStudentPreview,
@@ -46,4 +47,7 @@ test("professor: monta uma atividade de relacionamento de significados (Activity
   await showStudentPreview(page);
   await expect(page.getByText("cat", { exact: true }).last()).toBeVisible();
   await expect(page.getByText("cat → gato")).toHaveCount(1);
+  // RNF-007 - o widget de arrastar-e-soltar (ADR-007, @dnd-kit/core) é o
+  // ponto de maior risco de acessibilidade do Activity Engine.
+  await expectNoA11yViolations(page);
 });

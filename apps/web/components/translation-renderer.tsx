@@ -35,6 +35,7 @@ export function TranslationRenderer({
               <input
                 disabled
                 placeholder="Número da opção certa"
+                aria-label={`Número da opção certa (questão ${index + 1})`}
                 className="mt-1 w-40 rounded border border-border px-1 text-sm"
               />
             </div>
@@ -42,7 +43,11 @@ export function TranslationRenderer({
             <ul className="mt-1 space-y-1 text-sm">
               {item.options.map((option, i) => (
                 <li key={i} className="flex items-center gap-2">
-                  <input type="radio" disabled />
+                  <input
+                    type="radio"
+                    disabled
+                    aria-label={`${option} (questão ${index + 1})`}
+                  />
                   <span>{option}</span>
                 </li>
               ))}

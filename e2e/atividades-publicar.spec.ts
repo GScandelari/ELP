@@ -4,6 +4,7 @@ import {
   assignActivityToClasses,
   createActivity,
   createClass,
+  expectNoA11yViolations,
   publishActivity,
   registerTeacher,
   uniqueEmail,
@@ -57,4 +58,5 @@ test("professor: atribui uma atividade pronta a uma sala (RF-011, RN-012)", asyn
   await expect(page.getByText("Qual é a capital da França?")).toBeVisible();
   await expect(page.getByText("Paris")).toBeVisible();
   await expect(page.getByText("✓ Paris")).toHaveCount(0);
+  await expectNoA11yViolations(page); // RNF-007 - tela da sala com atividade atribuída
 });

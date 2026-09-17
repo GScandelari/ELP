@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  expectNoA11yViolations,
   registerTeacher,
   uniqueEmail,
   waitForFunctionsEmulator,
@@ -43,4 +44,18 @@ test("aluno menor de 18: cadastro self-service bloqueado", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Criar conta" })).toHaveCount(
     0,
   );
+});
+
+test("acessibilidade: cadastro, entrar e painel sem violações (RNF-007)", async ({
+  page,
+}) => {
+  await page.goto("/cadastro");
+  await expectNoA11yViolations(page);
+
+  await page.goto("/entrar");
+  await expectNoA11yViolations(page);
+
+  await registerTeacher(page, uniqueEmail("prof"));
+  await expect(page).toHaveURL(/\/painel$/);
+  await expectNoA11yViolations(page);
 });

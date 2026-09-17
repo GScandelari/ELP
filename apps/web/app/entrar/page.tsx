@@ -38,7 +38,7 @@ export default function EntrarPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center p-4">
+    <main className="flex min-h-dvh items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <Link href="/" className="text-lg font-bold">
           ELP
@@ -81,12 +81,7 @@ export default function EntrarPage() {
             </p>
           )}
 
-          <Button
-            type="submit"
-            size="lg"
-            className="w-full"
-            disabled={busy}
-          >
+          <Button type="submit" size="lg" className="w-full" disabled={busy}>
             {busy ? "Entrando…" : "Entrar"}
           </Button>
         </form>
@@ -98,6 +93,6 @@ export default function EntrarPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }
