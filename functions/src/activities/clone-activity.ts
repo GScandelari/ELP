@@ -4,6 +4,7 @@ import {
   type Firestore,
 } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { requireRole } from "../lib/require-role";
 
 type Payload = {
   activityId?: unknown;
@@ -50,76 +51,75 @@ async function computeCloneTitle(
  * "criar uma parecida com esta". A cópia nasce `DRAFT`, `locked: false`,
  * sem nenhum vínculo com salas/tentativas do original.
  */
-export const cloneActivity = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-  }
-  if (request.auth.token.role !== "teacher") {
-    throw new HttpsError(
-      "permission-denied",
+export const cloneActivity = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    const uid = requireRole(
+      request,
+      "teacher",
       "Apenas professores podem clonar atividades.",
     );
-  }
 
-  const data = (request.data ?? {}) as Payload;
-  const activityId = typeof data.activityId === "string" ? data.activityId : "";
-  if (!activityId) {
-    throw new HttpsError("invalid-argument", "Atividade inválida.");
-  }
+    const data = (request.data ?? {}) as Payload;
+    const activityId =
+      typeof data.activityId === "string" ? data.activityId : "";
+    if (!activityId) {
+      throw new HttpsError("invalid-argument", "Atividade inválida.");
+    }
 
-  const uid = request.auth.uid;
-  const db = getFirestore();
+    const db = getFirestore();
 
-  const activityRef = db.doc(`activities/${activityId}`);
-  const activitySnap = await activityRef.get();
-  if (!activitySnap.exists) {
-    throw new HttpsError("not-found", "Atividade não encontrada.");
-  }
-  if (activitySnap.get("accountId") !== uid) {
-    throw new HttpsError("permission-denied", "Esta atividade não é sua.");
-  }
+    const activityRef = db.doc(`activities/${activityId}`);
+    const activitySnap = await activityRef.get();
+    if (!activitySnap.exists) {
+      throw new HttpsError("not-found", "Atividade não encontrada.");
+    }
+    if (activitySnap.get("accountId") !== uid) {
+      throw new HttpsError("permission-denied", "Esta atividade não é sua.");
+    }
 
-  const itemsSnap = await activityRef
-    .collection("items")
-    .orderBy("position", "asc")
-    .get();
+    const itemsSnap = await activityRef
+      .collection("items")
+      .orderBy("position", "asc")
+      .get();
 
-  const title = await computeCloneTitle(
-    db,
-    uid,
-    activitySnap.get("title") ?? "",
-  );
+    const title = await computeCloneTitle(
+      db,
+      uid,
+      activitySnap.get("title") ?? "",
+    );
 
-  const now = FieldValue.serverTimestamp();
-  const newActivityRef = db.collection("activities").doc();
+    const now = FieldValue.serverTimestamp();
+    const newActivityRef = db.collection("activities").doc();
 
-  const batch = db.batch();
-  batch.set(newActivityRef, {
-    accountId: uid,
-    title,
-    description: activitySnap.get("description") ?? "",
-    type: activitySnap.get("type"),
-    difficulty: activitySnap.get("difficulty") ?? "EASY",
-    tags: activitySnap.get("tags") ?? [],
-    status: "DRAFT",
-    locked: false,
-    lockedAt: null,
-    clonedFrom: activityId,
-    itemCount: itemsSnap.size,
-    createdAt: now,
-    updatedAt: now,
-  });
-  for (const itemDoc of itemsSnap.docs) {
-    const itemData = itemDoc.data();
-    batch.set(newActivityRef.collection("items").doc(), {
+    const batch = db.batch();
+    batch.set(newActivityRef, {
       accountId: uid,
-      position: itemData.position ?? 0,
-      prompt: itemData.prompt ?? "",
-      configuration: itemData.configuration ?? {},
-      points: itemData.points ?? 1,
+      title,
+      description: activitySnap.get("description") ?? "",
+      type: activitySnap.get("type"),
+      difficulty: activitySnap.get("difficulty") ?? "EASY",
+      tags: activitySnap.get("tags") ?? [],
+      status: "DRAFT",
+      locked: false,
+      lockedAt: null,
+      clonedFrom: activityId,
+      itemCount: itemsSnap.size,
+      createdAt: now,
+      updatedAt: now,
     });
-  }
-  await batch.commit();
+    for (const itemDoc of itemsSnap.docs) {
+      const itemData = itemDoc.data();
+      batch.set(newActivityRef.collection("items").doc(), {
+        accountId: uid,
+        position: itemData.position ?? 0,
+        prompt: itemData.prompt ?? "",
+        configuration: itemData.configuration ?? {},
+        points: itemData.points ?? 1,
+      });
+    }
+    await batch.commit();
 
-  return { activityId: newActivityRef.id };
-});
+    return { activityId: newActivityRef.id };
+  },
+);

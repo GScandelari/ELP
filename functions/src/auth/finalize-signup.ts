@@ -22,73 +22,79 @@ type Payload = {
  * Aluno menor de 18 (isAdult === false) é rejeitado: a conta precisa ser
  * criada/vinculada pelo professor ou escola (RF-021).
  */
-export const finalizeSignup = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-  }
+export const finalizeSignup = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
+    }
 
-  const data = (request.data ?? {}) as Payload;
-  const name = typeof data.name === "string" ? data.name.trim() : "";
-  const role = data.role;
+    const data = (request.data ?? {}) as Payload;
+    const name = typeof data.name === "string" ? data.name.trim() : "";
+    const role = data.role;
 
-  if (name.length < 2) {
-    throw new HttpsError("invalid-argument", "Informe seu nome completo.");
-  }
-  if (role !== "teacher" && role !== "student") {
-    throw new HttpsError("invalid-argument", "Papel inválido.");
-  }
-  if (data.acceptedTerms !== true || data.acceptedPrivacy !== true) {
-    throw new HttpsError(
-      "failed-precondition",
-      "É necessário aceitar os Termos de Uso e a Política de Privacidade.",
-    );
-  }
-  if (role === "student" && data.isAdult !== true) {
-    throw new HttpsError(
-      "failed-precondition",
-      "Alunos menores de 18 anos devem ser cadastrados pelo professor ou pela escola.",
-    );
-  }
+    if (name.length < 2) {
+      throw new HttpsError("invalid-argument", "Informe seu nome completo.");
+    }
+    if (role !== "teacher" && role !== "student") {
+      throw new HttpsError("invalid-argument", "Papel inválido.");
+    }
+    if (data.acceptedTerms !== true || data.acceptedPrivacy !== true) {
+      throw new HttpsError(
+        "failed-precondition",
+        "É necessário aceitar os Termos de Uso e a Política de Privacidade.",
+      );
+    }
+    if (role === "student" && data.isAdult !== true) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Alunos menores de 18 anos devem ser cadastrados pelo professor ou pela escola.",
+      );
+    }
 
-  const uid = request.auth.uid;
-  const email = (request.auth.token.email as string | undefined) ?? null;
-  const db = getFirestore();
-  const userRef = db.doc(`users/${uid}`);
+    const uid = request.auth.uid;
+    const email = (request.auth.token.email as string | undefined) ?? null;
+    const db = getFirestore();
+    const userRef = db.doc(`users/${uid}`);
 
-  const existing = await userRef.get();
-  if (existing.exists) {
-    return { ok: true, role: existing.get("role") as string };
-  }
+    const existing = await userRef.get();
+    if (existing.exists) {
+      return { ok: true, role: existing.get("role") as string };
+    }
 
-  const now = FieldValue.serverTimestamp();
-  const batch = db.batch();
+    const now = FieldValue.serverTimestamp();
+    const batch = db.batch();
 
-  batch.set(userRef, {
-    name,
-    email,
-    role,
-    status: "ACTIVE",
-    isMinor: false, // menor não chega até aqui (self-service bloqueado)
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  if (role === "teacher") {
-    batch.set(db.doc(`accounts/${uid}`), { status: "ACTIVE", createdAt: now });
-  }
-
-  for (const type of ["TERMS", "PRIVACY_POLICY"] as const) {
-    batch.set(db.collection(`consents/${uid}/records`).doc(), {
-      type,
-      textVersion: CURRENT_LEGAL_VERSION,
-      grantedAt: now,
-      grantedByRole: role,
-      grantedByUid: uid,
+    batch.set(userRef, {
+      name,
+      email,
+      role,
+      status: "ACTIVE",
+      isMinor: false, // menor não chega até aqui (self-service bloqueado)
+      createdAt: now,
+      updatedAt: now,
     });
-  }
 
-  await batch.commit();
-  await getAuth().setCustomUserClaims(uid, { role });
+    if (role === "teacher") {
+      batch.set(db.doc(`accounts/${uid}`), {
+        status: "ACTIVE",
+        createdAt: now,
+      });
+    }
 
-  return { ok: true, role };
-});
+    for (const type of ["TERMS", "PRIVACY_POLICY"] as const) {
+      batch.set(db.collection(`consents/${uid}/records`).doc(), {
+        type,
+        textVersion: CURRENT_LEGAL_VERSION,
+        grantedAt: now,
+        grantedByRole: role,
+        grantedByUid: uid,
+      });
+    }
+
+    await batch.commit();
+    await getAuth().setCustomUserClaims(uid, { role });
+
+    return { ok: true, role };
+  },
+);

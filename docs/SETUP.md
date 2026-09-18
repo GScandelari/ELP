@@ -61,6 +61,22 @@ mostrar *"Emulador de Auth (127.0.0.1:9099): conectado ✓"*, e
    `NEXT_PUBLIC_USE_EMULATORS=false` para testar contra o projeto real.
 6. Aceitar o DPA do Google Cloud em cada projeto e salvar a evidência em
    `docs/lgpd/dpa/`.
+7. **App Check** (Fase 6, PR 6.5) — no console do Firebase de cada projeto
+   real (`elp-dev`/`elp-staging`/`elp-prod`): Configurações do projeto >
+   App Check > aba "Apps" > o app Web > registrar o provedor reCAPTCHA v3,
+   colando a **site key** (pública, vai em `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`
+   no `.env.local`/nos secrets de deploy) e a **secret key** (fica só no
+   console do Firebase — nunca commitar, nunca passar pro Claude). Sem
+   esse registro, `enforceAppCheck: true` nas Cloud Functions vai rejeitar
+   *toda* chamada com token inválido assim que o app apontar pro projeto
+   real — fazer isso **antes** de trocar `NEXT_PUBLIC_USE_EMULATORS` pra
+   `false` num ambiente que alguém vai usar de verdade. O dia a dia local
+   (`pnpm dev` + emulador) **não precisa de nada disso** — `lib/firebase.ts`
+   usa um `CustomProvider` local em vez do reCAPTCHA quando
+   `NEXT_PUBLIC_USE_EMULATORS=true`, sem chamada de rede nenhuma (o modo
+   debug oficial do App Check não funciona com o projeto fake do emulador,
+   `demo-elp` — ele tenta trocar o token com o backend real do Google e
+   recebe 400).
 
 ## CI/CD
 
