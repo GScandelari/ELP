@@ -7,7 +7,7 @@ Esta pasta reúne os artefatos exigidos ou recomendados pela Lei 13.709/2018 (LG
 | Arquivo | O que é | Status |
 |---|---|---|
 | `termos-e-consentimento.md` | Política de Privacidade resumida, termo de consentimento do responsável e textos de aceite | Rascunho MVP — falta nome/CNPJ da controladora e revisão jurídica |
-| `registro-de-tratamento.md` | Registro das operações de tratamento de dados pessoais (Art. 37) | Rascunho — completar até a Fase 6 |
+| `registro-de-tratamento.md` | Registro das operações de tratamento de dados pessoais (Art. 37) | ✅ Preenchido (Fase 6) — 10 operações, incluindo exportUserData/deleteUserData/auditLog/resultsSummary; revisão jurídica ainda pendente pra Fase 7 |
 | `ripd.md` | Relatório de Impacto à Proteção de Dados Pessoais (Art. 38) | v1.0 rascunho — 9 itens pendentes listados no fim do arquivo; concluir e assinar antes do go-live (Fase 7) |
 | `politica-de-retencao.md` | Prazos de retenção e regras de expurgo/anonimização por categoria | ✅ Preenchido (Fase 6) — aplicada por `deleteUserData` (imediato) e `purgeExpiredData` (agendada, tempo absoluto) |
 | `plano-resposta-incidentes.md` | Fluxo de detecção, contenção e notificação (ANPD + titulares, Art. 48) | v1.0 rascunho MVP — teste de mesa obrigatório antes do lançamento |

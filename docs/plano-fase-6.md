@@ -151,13 +151,13 @@ Ordem sequencial solta: 6.1 é pré-requisito de 6.2 e 6.3; as demais (6.4-6.7) 
 
 ## 11. Checklist de conclusão da fase
 
-- [ ] `exportUserData`/`deleteUserData` funcionando, com `auditLog` e teste de integração
-- [ ] `/conta`: aluno e professor conseguem exportar e excluir os próprios dados pelo portal
-- [ ] `purgeExpiredData` aplicando a política de retenção (§4.3), com `docs/lgpd/politica-de-retencao.md` preenchido
-- [ ] Logging estruturado nas 5 Cloud Functions sensíveis a LGPD (§4.4)
-- [ ] App Check integrado e habilitado (ou registrado como pendência isolada, se a chave não tiver chegado a tempo — risco, §10)
-- [ ] Revisão completa de Security Rules concluída, sem gap conhecido em aberto
-- [ ] Auditoria de acessibilidade rodada (`@axe-core/playwright` + checklist manual), achados corrigidos ou documentados
-- [ ] `docs/lgpd/registro-de-tratamento.md` atualizado com as operações desde a Fase 4
-- [ ] E2E cobrindo o cenário da seção 21 do SDD
-- [ ] `docs/IMPLEMENTATION-PLAN.md` — Fase 6 marcada como ✅ (com a ressalva do App Check, se for o caso)
+- [x] `exportUserData`/`deleteUserData` funcionando, com `auditLog` e teste de integração (PR 6.1)
+- [x] `/conta`: aluno e professor conseguem exportar e excluir os próprios dados pelo portal (PR 6.2)
+- [x] `purgeExpiredData` aplicando a política de retenção (§4.3), com `docs/lgpd/politica-de-retencao.md` preenchido (PR 6.3)
+- [x] Logging estruturado nas 5 Cloud Functions sensíveis a LGPD (§4.4) (PR 6.4)
+- [x] App Check integrado e habilitado — a chave reCAPTCHA chegou a tempo, sem precisar da pendência isolada do §10 (PR 6.5)
+- [x] Revisão completa de Security Rules concluída, sem gap conhecido em aberto (achado real corrigido: `assignments.update` não travava `startedCount`/`firstStartedAt`, o gate de RN-013) (PR 6.6)
+- [x] Auditoria de acessibilidade rodada (`@axe-core/playwright` + checklist manual), achados corrigidos (3 achados reais, todos corrigidos) — `docs/acessibilidade.md` (PR 6.7)
+- [x] `docs/lgpd/registro-de-tratamento.md` atualizado com as operações desde a Fase 4 (PR 6.8)
+- [x] E2E cobrindo o cenário da seção 21 do SDD — já coberto por `e2e/fase-3-fim-a-fim.spec.ts`/`e2e/fase-4-fim-a-fim.spec.ts`, confirmado sem necessidade de spec novo (PR 6.8)
+- [x] `docs/IMPLEMENTATION-PLAN.md` — Fase 6 marcada como ✅ (PR 6.8)
