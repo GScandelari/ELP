@@ -24,75 +24,78 @@ class CodeCollision extends Error {
  * vez de escrita direta no Firestore. `classes/{classId}` e
  * `enrollmentCodes/{code}` são gravados no mesmo commit.
  */
-export const createClass = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-  }
-  if (request.auth.token.role !== "teacher") {
-    throw new HttpsError(
-      "permission-denied",
-      "Apenas professores podem criar salas.",
-    );
-  }
-
-  const data = (request.data ?? {}) as Payload;
-  const name = typeof data.name === "string" ? data.name.trim() : "";
-  const description =
-    typeof data.description === "string" ? data.description.trim() : "";
-
-  if (name.length < 2 || name.length > 80) {
-    throw new HttpsError(
-      "invalid-argument",
-      "O nome da sala deve ter entre 2 e 80 caracteres.",
-    );
-  }
-  if (description.length > 500) {
-    throw new HttpsError(
-      "invalid-argument",
-      "A descrição deve ter no máximo 500 caracteres.",
-    );
-  }
-
-  const uid = request.auth.uid;
-  const db = getFirestore();
-
-  for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
-    const code = generateCode();
-    const codeRef = db.doc(`enrollmentCodes/${code}`);
-    const classRef = db.collection("classes").doc();
-
-    try {
-      await db.runTransaction(async (tx) => {
-        const existing = await tx.get(codeRef);
-        if (existing.exists) throw new CodeCollision();
-
-        const now = FieldValue.serverTimestamp();
-        tx.set(classRef, {
-          accountId: uid,
-          name,
-          description,
-          enrollmentCode: code,
-          status: "ACTIVE",
-          studentCount: 0,
-          createdAt: now,
-          updatedAt: now,
-        });
-        tx.set(codeRef, {
-          classId: classRef.id,
-          accountId: uid,
-          createdAt: now,
-        });
-      });
-
-      return { classId: classRef.id, enrollmentCode: code };
-    } catch (err) {
-      if (err instanceof CodeCollision) continue;
-      throw err;
+export const createClass = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
     }
-  }
+    if (request.auth.token.role !== "teacher") {
+      throw new HttpsError(
+        "permission-denied",
+        "Apenas professores podem criar salas.",
+      );
+    }
 
-  throw new HttpsError(
-    "resource-exhausted",
-    "Não foi possível gerar um código único. Tente novamente.",
-  );
-});
+    const data = (request.data ?? {}) as Payload;
+    const name = typeof data.name === "string" ? data.name.trim() : "";
+    const description =
+      typeof data.description === "string" ? data.description.trim() : "";
+
+    if (name.length < 2 || name.length > 80) {
+      throw new HttpsError(
+        "invalid-argument",
+        "O nome da sala deve ter entre 2 e 80 caracteres.",
+      );
+    }
+    if (description.length > 500) {
+      throw new HttpsError(
+        "invalid-argument",
+        "A descrição deve ter no máximo 500 caracteres.",
+      );
+    }
+
+    const uid = request.auth.uid;
+    const db = getFirestore();
+
+    for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
+      const code = generateCode();
+      const codeRef = db.doc(`enrollmentCodes/${code}`);
+      const classRef = db.collection("classes").doc();
+
+      try {
+        await db.runTransaction(async (tx) => {
+          const existing = await tx.get(codeRef);
+          if (existing.exists) throw new CodeCollision();
+
+          const now = FieldValue.serverTimestamp();
+          tx.set(classRef, {
+            accountId: uid,
+            name,
+            description,
+            enrollmentCode: code,
+            status: "ACTIVE",
+            studentCount: 0,
+            createdAt: now,
+            updatedAt: now,
+          });
+          tx.set(codeRef, {
+            classId: classRef.id,
+            accountId: uid,
+            createdAt: now,
+          });
+        });
+
+        return { classId: classRef.id, enrollmentCode: code };
+      } catch (err) {
+        if (err instanceof CodeCollision) continue;
+        throw err;
+      }
+    }
+
+    throw new HttpsError(
+      "resource-exhausted",
+      "Não foi possível gerar um código único. Tente novamente.",
+    );
+  },
+);

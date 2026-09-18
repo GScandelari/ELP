@@ -14,84 +14,99 @@ import { logAudit } from "./audit-log";
  * salas (nome/e-mail do roster) — "meus dados" é a conta e o
  * repositório do próprio professor, não o de terceiros.
  */
-export const exportUserData = onCall(async (request) => {
-  return withStructuredLogging(
-    "exportUserData",
-    { uid: request.auth?.uid ?? null },
-    async () => {
-      if (!request.auth) {
-        throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-      }
-
-      const uid = request.auth.uid;
-      const role = request.auth.token.role;
-      const db = getFirestore();
-
-      const userSnap = await db.doc(`users/${uid}`).get();
-      if (!userSnap.exists) {
-        throw new HttpsError("not-found", "Conta não encontrada.");
-      }
-
-      const data: Record<string, unknown> = {
-        exportedAt: new Date().toISOString(),
-        account: { id: uid, ...userSnap.data() },
-      };
-
-      if (role === "teacher") {
-        const [accountSnap, classesSnap, activitiesSnap] = await Promise.all([
-          db.doc(`accounts/${uid}`).get(),
-          db.collection("classes").where("accountId", "==", uid).get(),
-          db.collection("activities").where("accountId", "==", uid).get(),
-        ]);
-        data.teacherAccount = accountSnap.exists ? accountSnap.data() : null;
-        data.classes = classesSnap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
-        data.activities = activitiesSnap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
-      } else {
-        const [enrollmentsSnap, attemptsSnap, resultsSnap] = await Promise.all([
-          db.collectionGroup("enrollments").where("studentId", "==", uid).get(),
-          db.collection("attempts").where("studentId", "==", uid).get(),
-          db.collection("attemptResults").where("studentId", "==", uid).get(),
-        ]);
-
-        data.enrollments = enrollmentsSnap.docs.map((d) => ({
-          classId: d.ref.parent.parent?.id ?? null,
-          ...d.data(),
-        }));
-
-        const attempts = [];
-        for (const doc of attemptsSnap.docs) {
-          const answersSnap = await doc.ref.collection("answers").get();
-          attempts.push({
-            id: doc.id,
-            ...doc.data(),
-            answers: answersSnap.docs.map((a) => ({
-              itemId: a.id,
-              ...a.data(),
-            })),
-          });
+export const exportUserData = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    return withStructuredLogging(
+      "exportUserData",
+      { uid: request.auth?.uid ?? null },
+      async () => {
+        if (!request.auth) {
+          throw new HttpsError(
+            "unauthenticated",
+            "É preciso estar autenticado.",
+          );
         }
-        data.attempts = attempts;
-        data.attemptResults = resultsSnap.docs.map((d) => ({
+
+        const uid = request.auth.uid;
+        const role = request.auth.token.role;
+        const db = getFirestore();
+
+        const userSnap = await db.doc(`users/${uid}`).get();
+        if (!userSnap.exists) {
+          throw new HttpsError("not-found", "Conta não encontrada.");
+        }
+
+        const data: Record<string, unknown> = {
+          exportedAt: new Date().toISOString(),
+          account: { id: uid, ...userSnap.data() },
+        };
+
+        if (role === "teacher") {
+          const [accountSnap, classesSnap, activitiesSnap] = await Promise.all([
+            db.doc(`accounts/${uid}`).get(),
+            db.collection("classes").where("accountId", "==", uid).get(),
+            db.collection("activities").where("accountId", "==", uid).get(),
+          ]);
+          data.teacherAccount = accountSnap.exists ? accountSnap.data() : null;
+          data.classes = classesSnap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }));
+          data.activities = activitiesSnap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }));
+        } else {
+          const [enrollmentsSnap, attemptsSnap, resultsSnap] =
+            await Promise.all([
+              db
+                .collectionGroup("enrollments")
+                .where("studentId", "==", uid)
+                .get(),
+              db.collection("attempts").where("studentId", "==", uid).get(),
+              db
+                .collection("attemptResults")
+                .where("studentId", "==", uid)
+                .get(),
+            ]);
+
+          data.enrollments = enrollmentsSnap.docs.map((d) => ({
+            classId: d.ref.parent.parent?.id ?? null,
+            ...d.data(),
+          }));
+
+          const attempts = [];
+          for (const doc of attemptsSnap.docs) {
+            const answersSnap = await doc.ref.collection("answers").get();
+            attempts.push({
+              id: doc.id,
+              ...doc.data(),
+              answers: answersSnap.docs.map((a) => ({
+                itemId: a.id,
+                ...a.data(),
+              })),
+            });
+          }
+          data.attempts = attempts;
+          data.attemptResults = resultsSnap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }));
+        }
+
+        const consentsSnap = await db
+          .collection(`consents/${uid}/records`)
+          .get();
+        data.consents = consentsSnap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         }));
-      }
 
-      const consentsSnap = await db.collection(`consents/${uid}/records`).get();
-      data.consents = consentsSnap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
+        await logAudit(uid, "exportUserData", request.rawRequest?.ip ?? null);
 
-      await logAudit(uid, "exportUserData", request.rawRequest?.ip ?? null);
-
-      return data;
-    },
-  );
-});
+        return data;
+      },
+    );
+  },
+);

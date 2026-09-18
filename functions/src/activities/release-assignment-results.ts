@@ -12,39 +12,42 @@ type Payload = {
  * Escrita única — `attemptResults` não denormaliza `resultsReleased`
  * (docs/plano-fase-4.md §2), então não há fan-out sobre as tentativas.
  */
-export const releaseAssignmentResults = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-  }
-  if (request.auth.token.role !== "teacher") {
-    throw new HttpsError(
-      "permission-denied",
-      "Apenas professores podem liberar resultados.",
+export const releaseAssignmentResults = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
+    }
+    if (request.auth.token.role !== "teacher") {
+      throw new HttpsError(
+        "permission-denied",
+        "Apenas professores podem liberar resultados.",
+      );
+    }
+
+    const data = (request.data ?? {}) as Payload;
+    const classId = typeof data.classId === "string" ? data.classId : "";
+    const assignmentId =
+      typeof data.assignmentId === "string" ? data.assignmentId : "";
+    if (!classId || !assignmentId) {
+      throw new HttpsError("invalid-argument", "Sala ou atribuição inválida.");
+    }
+
+    const uid = request.auth.uid;
+    const db = getFirestore();
+
+    const { assignmentRef } = await loadOwnedAssignment(
+      db,
+      classId,
+      assignmentId,
+      uid,
     );
-  }
 
-  const data = (request.data ?? {}) as Payload;
-  const classId = typeof data.classId === "string" ? data.classId : "";
-  const assignmentId =
-    typeof data.assignmentId === "string" ? data.assignmentId : "";
-  if (!classId || !assignmentId) {
-    throw new HttpsError("invalid-argument", "Sala ou atribuição inválida.");
-  }
+    await assignmentRef.update({
+      resultsReleased: true,
+      resultsReleasedAt: FieldValue.serverTimestamp(),
+    });
 
-  const uid = request.auth.uid;
-  const db = getFirestore();
-
-  const { assignmentRef } = await loadOwnedAssignment(
-    db,
-    classId,
-    assignmentId,
-    uid,
-  );
-
-  await assignmentRef.update({
-    resultsReleased: true,
-    resultsReleasedAt: FieldValue.serverTimestamp(),
-  });
-
-  return { ok: true };
-});
+    return { ok: true };
+  },
+);
