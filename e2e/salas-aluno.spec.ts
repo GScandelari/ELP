@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  expectNoA11yViolations,
   registerStudent,
   registerTeacher,
   uniqueEmail,
@@ -36,6 +37,7 @@ test("aluno: entra em sala pelo código e a sala aparece na lista", async ({
   // entra pelo código
   await page.getByRole("link", { name: "Entrar em sala" }).click();
   await expect(page).toHaveURL(/\/salas\/entrar$/);
+  await expectNoA11yViolations(page); // RNF-007 - formulário de entrar em sala
   await page.getByLabel("Código da sala").fill(code);
   await page.getByRole("button", { name: "Entrar na sala" }).click();
 

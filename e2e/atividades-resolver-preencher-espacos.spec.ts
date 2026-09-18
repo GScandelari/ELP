@@ -3,6 +3,7 @@ import {
   assignActivityToClasses,
   createActivity,
   createClass,
+  expectNoA11yViolations,
   joinClassAndOpenAssignment,
   publishActivity,
   registerTeacher,
@@ -47,6 +48,7 @@ test("aluno: resolve uma atividade de preencher espaços, envia e vê a nota ap�
     "Inglês 6º ano",
     "Rotina diária",
   );
+  await expectNoA11yViolations(page); // RNF-007 - tela de resolução (aluno)
 
   await page.getByLabel("Espaço 1 da questão 1").fill("wake");
 

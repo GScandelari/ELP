@@ -34,6 +34,7 @@ export function MeaningMatchingRenderer({
                 <span className="text-muted-foreground">→</span>
                 <select
                   disabled
+                  aria-label={`Relacionar "${leftItem.left}" (questão ${index + 1})`}
                   className="rounded border border-border px-1 text-sm"
                 >
                   <option>—</option>

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import {
+  expectNoA11yViolations,
   login,
   registerStudent,
   uniqueEmail,
@@ -24,6 +25,7 @@ test("aluno: exporta os próprios dados e exclui a própria conta (RF-020)", asy
   await expect(
     page.getByRole("heading", { name: "Meus dados", exact: true }),
   ).toBeVisible();
+  await expectNoA11yViolations(page); // RNF-007 - tela de direitos do titular
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Exportar meus dados" }).click();

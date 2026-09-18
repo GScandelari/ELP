@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  expectNoA11yViolations,
   registerTeacher,
   uniqueEmail,
   waitForFunctionsEmulator,
@@ -31,6 +32,7 @@ test("professor: cria sala e vê o código de inscrição", async ({ page }) => 
 
   // código no formato canônico "ABC-234" (letras/dígitos do alfabeto sem ambíguos)
   await expect(page.getByText(/^[A-Z0-9]{3}-[A-Z0-9]{3}$/)).toBeVisible();
+  await expectNoA11yViolations(page); // RNF-007 - tela da sala (professor)
 
   // volta para a lista e a sala criada aparece no card
   await page.getByRole("link", { name: "← Minhas salas" }).click();

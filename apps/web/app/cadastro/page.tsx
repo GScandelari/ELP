@@ -28,7 +28,8 @@ export default function CadastroPage() {
   }, [loading, user, router]);
 
   const isMinorStudent = role === "student" && age === "minor";
-  const canFillForm = role === "teacher" || (role === "student" && age === "adult");
+  const canFillForm =
+    role === "teacher" || (role === "student" && age === "adult");
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -61,7 +62,7 @@ export default function CadastroPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center p-4">
+    <main className="flex min-h-dvh items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <Link href="/" className="text-lg font-bold">
           ELP
@@ -114,7 +115,8 @@ export default function CadastroPage() {
             className="mt-4 rounded-md border border-border bg-muted p-3 text-sm"
           >
             Contas de alunos menores de 18 anos são criadas pelo professor ou
-            pela escola. Peça a quem dá a sua aula para adicionar você a uma sala.
+            pela escola. Peça a quem dá a sua aula para adicionar você a uma
+            sala.
           </p>
         )}
 
@@ -195,7 +197,7 @@ export default function CadastroPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }
 
