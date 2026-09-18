@@ -1,5 +1,6 @@
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { requireRole } from "../lib/require-role";
 import { getActivityTypeHandler } from "../activity-types";
 import { freezeContent } from "./freeze-content";
 import { loadOwnedAssignment } from "./load-owned-assignment";
@@ -21,15 +22,11 @@ type Payload = {
 export const swapAssignmentActivity = onCall(
   { enforceAppCheck: true },
   async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-    }
-    if (request.auth.token.role !== "teacher") {
-      throw new HttpsError(
-        "permission-denied",
-        "Apenas professores podem substituir a atividade de uma atribuição.",
-      );
-    }
+    const uid = requireRole(
+      request,
+      "teacher",
+      "Apenas professores podem substituir a atividade de uma atribuição.",
+    );
 
     const data = (request.data ?? {}) as Payload;
     const classId = typeof data.classId === "string" ? data.classId : "";
@@ -44,7 +41,6 @@ export const swapAssignmentActivity = onCall(
       );
     }
 
-    const uid = request.auth.uid;
     const db = getFirestore();
 
     const { classSnap, assignmentRef, assignmentSnap } =

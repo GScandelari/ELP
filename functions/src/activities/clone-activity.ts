@@ -4,6 +4,7 @@ import {
   type Firestore,
 } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { requireRole } from "../lib/require-role";
 
 type Payload = {
   activityId?: unknown;
@@ -53,15 +54,11 @@ async function computeCloneTitle(
 export const cloneActivity = onCall(
   { enforceAppCheck: true },
   async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-    }
-    if (request.auth.token.role !== "teacher") {
-      throw new HttpsError(
-        "permission-denied",
-        "Apenas professores podem clonar atividades.",
-      );
-    }
+    const uid = requireRole(
+      request,
+      "teacher",
+      "Apenas professores podem clonar atividades.",
+    );
 
     const data = (request.data ?? {}) as Payload;
     const activityId =
@@ -70,7 +67,6 @@ export const cloneActivity = onCall(
       throw new HttpsError("invalid-argument", "Atividade inválida.");
     }
 
-    const uid = request.auth.uid;
     const db = getFirestore();
 
     const activityRef = db.doc(`activities/${activityId}`);

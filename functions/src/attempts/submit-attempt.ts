@@ -1,5 +1,6 @@
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { requireRole } from "../lib/require-role";
 import { getActivityTypeHandler } from "../activity-types";
 
 type Payload = {
@@ -21,15 +22,11 @@ type Payload = {
 export const submitAttempt = onCall(
   { enforceAppCheck: true },
   async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-    }
-    if (request.auth.token.role !== "student") {
-      throw new HttpsError(
-        "permission-denied",
-        "Apenas alunos podem enviar uma tentativa.",
-      );
-    }
+    const uid = requireRole(
+      request,
+      "student",
+      "Apenas alunos podem enviar uma tentativa.",
+    );
 
     const data = (request.data ?? {}) as Payload;
     const attemptId = typeof data.attemptId === "string" ? data.attemptId : "";
@@ -46,7 +43,6 @@ export const submitAttempt = onCall(
       throw new HttpsError("invalid-argument", "Respostas inválidas.");
     }
 
-    const uid = request.auth.uid;
     const db = getFirestore();
 
     const attemptRef = db.doc(`attempts/${attemptId}`);

@@ -1,5 +1,6 @@
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { requireRole } from "../lib/require-role";
 import { getActivityTypeHandler } from "../activity-types";
 import { freezeContent } from "./freeze-content";
 
@@ -32,15 +33,11 @@ const RESULTS_POLICIES = ["ON_TEACHER_RELEASE", "ON_DUE_DATE", "ON_CLOSE"];
 export const publishAssignment = onCall(
   { enforceAppCheck: true },
   async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-    }
-    if (request.auth.token.role !== "teacher") {
-      throw new HttpsError(
-        "permission-denied",
-        "Apenas professores podem atribuir atividades.",
-      );
-    }
+    const uid = requireRole(
+      request,
+      "teacher",
+      "Apenas professores podem atribuir atividades.",
+    );
 
     const data = (request.data ?? {}) as Payload;
     const classId = typeof data.classId === "string" ? data.classId : "";
@@ -101,7 +98,6 @@ export const publishAssignment = onCall(
       );
     }
 
-    const uid = request.auth.uid;
     const db = getFirestore();
 
     const activityRef = db.doc(`activities/${activityId}`);

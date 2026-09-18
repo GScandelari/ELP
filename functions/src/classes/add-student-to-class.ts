@@ -2,6 +2,7 @@ import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { withStructuredLogging } from "../lib/logging";
+import { requireRole } from "../lib/require-role";
 import { CURRENT_LEGAL_VERSION } from "../lib/legal";
 
 type GuardianConsentPayload = {
@@ -35,18 +36,11 @@ export const addStudentToClass = onCall(
       "addStudentToClass",
       { uid: request.auth?.uid ?? null },
       async () => {
-        if (!request.auth) {
-          throw new HttpsError(
-            "unauthenticated",
-            "É preciso estar autenticado.",
-          );
-        }
-        if (request.auth.token.role !== "teacher") {
-          throw new HttpsError(
-            "permission-denied",
-            "Apenas professores podem inscrever alunos.",
-          );
-        }
+        const uid = requireRole(
+          request,
+          "teacher",
+          "Apenas professores podem inscrever alunos.",
+        );
 
         const data = (request.data ?? {}) as Payload;
         const classId = typeof data.classId === "string" ? data.classId : "";
@@ -71,7 +65,6 @@ export const addStudentToClass = onCall(
           throw new HttpsError("invalid-argument", "Informe um e-mail válido.");
         }
 
-        const uid = request.auth.uid;
         const db = getFirestore();
 
         const classRef = db.doc(`classes/${classId}`);

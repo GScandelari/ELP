@@ -1,5 +1,6 @@
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { requireRole } from "../lib/require-role";
 import { generateCode } from "./enrollment-code";
 
 type Payload = {
@@ -27,15 +28,11 @@ class CodeCollision extends Error {
 export const createClass = onCall(
   { enforceAppCheck: true },
   async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-    }
-    if (request.auth.token.role !== "teacher") {
-      throw new HttpsError(
-        "permission-denied",
-        "Apenas professores podem criar salas.",
-      );
-    }
+    const uid = requireRole(
+      request,
+      "teacher",
+      "Apenas professores podem criar salas.",
+    );
 
     const data = (request.data ?? {}) as Payload;
     const name = typeof data.name === "string" ? data.name.trim() : "";
@@ -55,7 +52,6 @@ export const createClass = onCall(
       );
     }
 
-    const uid = request.auth.uid;
     const db = getFirestore();
 
     for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {

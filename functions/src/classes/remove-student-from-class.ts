@@ -1,5 +1,6 @@
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { requireRole } from "../lib/require-role";
 
 type Payload = {
   classId?: unknown;
@@ -15,15 +16,11 @@ type Payload = {
 export const removeStudentFromClass = onCall(
   { enforceAppCheck: true },
   async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-    }
-    if (request.auth.token.role !== "teacher") {
-      throw new HttpsError(
-        "permission-denied",
-        "Apenas professores podem remover alunos.",
-      );
-    }
+    const uid = requireRole(
+      request,
+      "teacher",
+      "Apenas professores podem remover alunos.",
+    );
 
     const data = (request.data ?? {}) as Payload;
     const classId = typeof data.classId === "string" ? data.classId : "";
@@ -32,7 +29,6 @@ export const removeStudentFromClass = onCall(
       throw new HttpsError("invalid-argument", "Dados inválidos.");
     }
 
-    const uid = request.auth.uid;
     const db = getFirestore();
     const classRef = db.doc(`classes/${classId}`);
     const enrollmentRef = classRef.collection("enrollments").doc(studentId);

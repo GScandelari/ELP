@@ -1,5 +1,6 @@
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { requireRole } from "../lib/require-role";
 
 type Payload = {
   classId?: unknown;
@@ -17,15 +18,11 @@ type Payload = {
 export const createAttempt = onCall(
   { enforceAppCheck: true },
   async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-    }
-    if (request.auth.token.role !== "student") {
-      throw new HttpsError(
-        "permission-denied",
-        "Apenas alunos podem iniciar uma atividade.",
-      );
-    }
+    const uid = requireRole(
+      request,
+      "student",
+      "Apenas alunos podem iniciar uma atividade.",
+    );
 
     const data = (request.data ?? {}) as Payload;
     const classId = typeof data.classId === "string" ? data.classId : "";
@@ -35,7 +32,6 @@ export const createAttempt = onCall(
       throw new HttpsError("invalid-argument", "Sala ou atividade inválida.");
     }
 
-    const uid = request.auth.uid;
     const db = getFirestore();
 
     const classRef = db.doc(`classes/${classId}`);

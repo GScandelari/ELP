@@ -1,5 +1,6 @@
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { requireRole } from "../lib/require-role";
 import { loadOwnedAssignment } from "./load-owned-assignment";
 
 type Payload = {
@@ -15,15 +16,11 @@ type Payload = {
 export const releaseAssignmentResults = onCall(
   { enforceAppCheck: true },
   async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "É preciso estar autenticado.");
-    }
-    if (request.auth.token.role !== "teacher") {
-      throw new HttpsError(
-        "permission-denied",
-        "Apenas professores podem liberar resultados.",
-      );
-    }
+    const uid = requireRole(
+      request,
+      "teacher",
+      "Apenas professores podem liberar resultados.",
+    );
 
     const data = (request.data ?? {}) as Payload;
     const classId = typeof data.classId === "string" ? data.classId : "";
@@ -33,7 +30,6 @@ export const releaseAssignmentResults = onCall(
       throw new HttpsError("invalid-argument", "Sala ou atribuição inválida.");
     }
 
-    const uid = request.auth.uid;
     const db = getFirestore();
 
     const { assignmentRef } = await loadOwnedAssignment(

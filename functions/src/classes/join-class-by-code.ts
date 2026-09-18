@@ -1,6 +1,7 @@
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { withStructuredLogging } from "../lib/logging";
+import { requireRole } from "../lib/require-role";
 import { isValidCode, normalizeCode } from "./enrollment-code";
 
 type Payload = {
@@ -26,20 +27,11 @@ export const joinClassByCode = onCall(
       "joinClassByCode",
       { uid: request.auth?.uid ?? null },
       async () => {
-        if (!request.auth) {
-          throw new HttpsError(
-            "unauthenticated",
-            "É preciso estar autenticado.",
-          );
-        }
-        if (request.auth.token.role !== "student") {
-          throw new HttpsError(
-            "permission-denied",
-            "Apenas alunos podem entrar em uma sala por código.",
-          );
-        }
-
-        const uid = request.auth.uid;
+        const uid = requireRole(
+          request,
+          "student",
+          "Apenas alunos podem entrar em uma sala por código.",
+        );
         const data = (request.data ?? {}) as Payload;
         const rawCode = typeof data.code === "string" ? data.code : "";
         const code = normalizeCode(rawCode);
