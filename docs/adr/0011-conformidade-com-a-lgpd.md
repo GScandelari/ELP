@@ -34,14 +34,14 @@ O SDD original não tratava privacidade como requisito — apenas "segurança" g
 
 ### 4. Direitos do titular (Art. 18) — cria RF-020
 
-- Autoatendimento no portal: **exportar meus dados** (JSON, portabilidade), **corrigir** cadastro, **excluir** minha conta.
+- Autoatendimento no portal: **exportar meus dados** (JSON, portabilidade) e **excluir** minha conta (`/conta`, Fase 6). **Corrigir** cadastro não ganhou tela dedicada — nome/e-mail já são geridos pelo próprio Firebase Auth e não há nenhum campo de perfil além desses hoje; uma tela de edição sem nada novo pra editar seria burocracia sem função (decisão registrada em `docs/plano-fase-6.md` §6). Revisitar se o cadastro ganhar mais campos.
 - Exclusão = **anonimização** das tentativas/respostas (`studentId` substituído por token não reversível, identificadores diretos removidos), preservando as agregações de `resultsSummary`.
 - Prazo de resposta: 15 dias (Art. 19). Encarregado (DPO) no MVP: Stanke Scandelari — stanke399@gmail.com; contato publicado na Política de Privacidade (`docs/lgpd/termos-e-consentimento.md`).
 
 ### 5. Retenção e ciclo de vida
 
-- Prazos por categoria de dado definidos em `docs/lgpd/politica-de-retencao.md` (defaults propostos: dados de conta enquanto a conta existir + 30 dias; logs de auditoria 6 meses; dados de alunos de uma conta encerrada anonimizados em até 30 dias).
-- Cloud Function agendada `purgeExpiredData` aplica a política.
+- Prazos por categoria de dado definidos em `docs/lgpd/politica-de-retencao.md` (Fase 6): conta ativa por tempo indefinido (só o titular decide excluir); anonimização de `attempts`/`attemptResults` é **imediata** ao excluir a conta (`deleteUserData`, síncrono, sem período de carência — "exclusão = anonimização"); logs de auditoria (`auditLog`) 6 meses desde a gravação; registros de consentimento 5 anos **após a anonimização** (não desde o consentimento em si — a prova precisa sobreviver enquanto a conta existir).
+- Cloud Function agendada `purgeExpiredData` (Fase 6) aplica a parte baseada em tempo absoluto da política (`auditLog`, `consents` de contas já anonimizadas); a anonimização em si é síncrona, disparada pelo titular via `deleteUserData`, não por essa função agendada.
 
 ### 6. Segurança e registro (Art. 37, 38, 46, 48)
 
@@ -54,14 +54,14 @@ O SDD original não tratava privacidade como requisito — apenas "segurança" g
 ### 7. Cookies e rastreamento
 
 - MVP: **somente cookies estritamente necessários** (sessão Firebase Auth, App Check, preferência de idioma). Exigem informação, não consentimento prévio — **banner informativo** + link para `/cookies`.
-- Componente `<CookieConsent>` implementado já com arquitetura de categorias (necessário / analytics / marketing) e um `ConsentContext`; no MVP só "necessário" está ativo. Qualquer script não essencial fica **bloqueado até opt-in**.
+- Implementado como `<CookieNotice>` (`apps/web/components/cookie-notice.tsx`): banner dispensável, sem categorias nem opt-in — como só cookies estritamente necessários existem, não há nada pra categorizar ou bloquear até consentimento. Uma arquitetura de categorias (`<CookieConsent>` + `ConsentContext`) foi cogitada no desenho original desta ADR, mas não foi construída: seria complexidade sem função enquanto o MVP não tiver nenhum cookie não essencial — revisitar se/quando Analytics ou qualquer script de terceiro entrar em cena (achado da revisão da Fase 6, `docs/plano-fase-6.md` §2).
 - **Nenhuma** tag de terceiros (Google Analytics, Meta Pixel, etc.) no MVP.
 
 ## Consequências
 
 - Fase 0: projetos Firebase em `southamerica-east1`; DPA do Google aceito e arquivado; RIPD aberto como documento vivo; encarregado (DPO) designado.
 - Fase 1 cresce: age gate, versionamento de textos legais, função `recordConsent` e coleção `consents/{uid}`.
-- Fase 6 ganha: funções `exportUserData` / `deleteUserData` / `purgeExpiredData`, telas de direitos do titular, componente `<CookieConsent>`, preenchimento do registro de tratamento.
+- Fase 6 ganha: funções `exportUserData` / `deleteUserData` / `purgeExpiredData`, telas de direitos do titular, preenchimento do registro de tratamento e da política de retenção. `<CookieNotice>` (banner informativo simples) já existia desde a Fase 1 — não ganhou categorias nesta fase (§7 acima).
 - Fase 7: revisão jurídica dos textos e RIPD assinado — caminho crítico, depende de terceiro.
 - Custo/tempo de assessoria jurídica para textos e RIPD.
 - Nova coleção `consents/{uid}/records/{recordId}` (imutável, gravada só por Cloud Function).

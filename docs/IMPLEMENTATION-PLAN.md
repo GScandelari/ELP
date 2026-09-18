@@ -357,18 +357,18 @@ Cada fase tem escopo fechado, é testável isoladamente e gera algo demonstráve
 - ✅ Dashboard do professor (RF-018) em `/salas/[classId]/resultados`: uma tabela aluno × atividade por sala, cobrindo as 3 dimensões do RF-018 (sala/aluno/atividade) numa tela só, respeitando RN-010 — o professor vê os resultados da turma independentemente da liberação para os alunos (PR 5.2).
 - ✅ **Critério de saída:** UC-007 completo sem necessidade de ler todos os `attempts` no client — coberto por `e2e/resultados-professor.spec.ts` (PR 5.2).
 
-### Fase 6 — Observabilidade, Segurança, Privacidade e Hardening (2–3 semanas)
+### Fase 6 — Observabilidade, Segurança, Privacidade e Hardening ✅ (PRs #32–#38, plano em `docs/plano-fase-6.md`)
 
-- Cloud Logging estruturado + Error Reporting nas Cloud Functions (RNF-006).
-- App Check habilitado (proteção contra abuso das funções `callable`).
-- Revisão completa de Security Rules + suíte de testes de regras.
-- Auditoria de acessibilidade (RNF-007): navegação por teclado, contraste, labels — especialmente nos exercícios de drag-and-drop.
-- Funções `exportUserData` e `deleteUserData` (anonimização de `attempts`/`answers`) e telas de direitos do titular no portal (RF-020).
-- Componente `<CookieConsent>` (categorias necessário/analytics/marketing; só "necessário" ativo no MVP) + página `/cookies` (RF-019).
-- Cloud Function agendada `purgeExpiredData` aplicando a política de retenção (ADR-011).
-- Preencher o registro das operações de tratamento (`docs/lgpd/registro-de-tratamento.md`).
-- Testes E2E cobrindo o cenário da seção 21 do SDD (Playwright).
-- **Critério de saída:** todos os itens da seção 22 (Critérios de Aceitação do MVP) do SDD verificados, incluindo o grupo "Privacidade e conformidade".
+- ✅ **Achado da fase** (`docs/plano-fase-6.md` §2): boa parte do checklist "Privacidade e conformidade" da seção 22 do SDD já estava pronta desde as Fases 1–2 (banner de cookies, páginas legais, registro de consentimento, fluxo de idade/responsável do RF-021) — o escopo real da fase ficou em RF-020 de ponta a ponta, observabilidade, App Check, revisão de rules, acessibilidade e fechar os documentos de LGPD ainda em rascunho.
+- ✅ `exportUserData`/`deleteUserData` (callables, Art. 18 LGPD) + `auditLog` (coleção só-Admin-SDK, retenção 6 meses) — exportação sem o gate de `resultsReleased` (portabilidade ≠ liberação pedagógica, RN-011); exclusão é anonimização **imediata**, sem carência (`studentId` vira token não reversível; `resultsSummary` nunca é tocado, já é agregado sem identificador direto) (PR 6.1).
+- ✅ Tela `/conta` (RF-020): exportar (baixa o JSON) e excluir a própria conta, link no `UserMenu` — dois bugs reais achados via E2E (corrida no `revokeObjectURL` do download; redirecionamento duplicado depois do `signOut`) (PR 6.2).
+- ✅ `purgeExpiredData` (scheduled, `every 24 hours`) aplicando a parte da política de retenção baseada em tempo absoluto (`auditLog` 6 meses; `consents` de contas já anonimizadas, 5 anos depois da anonimização) — `docs/lgpd/politica-de-retencao.md` preenchido (PR 6.3).
+- ✅ Logging estruturado (`firebase-functions/logger`) nas 5 Cloud Functions sensíveis a LGPD (`exportUserData`, `deleteUserData`, `purgeExpiredData`, `joinClassByCode`, `addStudentToClass`) — decisão deliberada de não instrumentar as ~14 restantes (PR 6.4).
+- ✅ App Check (SDK + `enforceAppCheck: true` em todas as 14 Cloud Functions `callable`), depois do usuário registrar a chave reCAPTCHA v3. **Achado real:** o emulador de Functions também aplica `enforceAppCheck` (não só produção) e o modo debug oficial do App Check não funciona contra o projeto fake do emulador (tenta trocar o token com o backend real do Google, HTTP 400) — resolvido com um `CustomProvider` local em modo emulador, sem chamada de rede (PR 6.5).
+- ✅ Revisão completa de Security Rules acumuladas desde a Fase 0 — achado real: `assignments.update` não travava `startedCount`/`firstStartedAt` (o gate de RN-013 em `swapAssignmentActivity`) nem a configuração congelada no publish, então um professor podia burlar essas checagens por escrita direta; corrigido, com `status` agora só aceitando a transição `PUBLISHED -> CLOSED` (PR 6.6).
+- ✅ Auditoria de acessibilidade (RNF-007): `@axe-core/playwright` embutido nos specs E2E existentes (sem specs novos dedicados, salvo as páginas públicas que nenhum spec visitava) + checklist manual (teclado, contraste) em `docs/acessibilidade.md`. 3 achados reais corrigidos: `aria-label` ausente em inputs `disabled` de preview e `<main>` ausente em `/cadastro`/`/entrar` (PR 6.7).
+- ✅ `docs/lgpd/registro-de-tratamento.md` preenchido (10 operações, incluindo as novas desde a Fase 4: `attempts`/`attemptResults`, `resultsSummary`, `exportUserData`/`deleteUserData`, `auditLog`); ADR-011 §4/§5/§7 atualizada pra bater com o que foi construído de fato (PR 6.8).
+- ✅ **Critério de saída:** itens do grupo "Privacidade e conformidade" da seção 22 do SDD que cabem nesta fase, verificados — exceto o RIPD, que segue bloqueio explícito da Fase 7 (ADR-011 §6). Cenário principal da seção 21 (professor cadastra → cria sala → aluno entra → atividade → publica → resolve → envia → corrige → professor vê resultado) já coberto de ponta a ponta por `e2e/fase-3-fim-a-fim.spec.ts`/`e2e/fase-4-fim-a-fim.spec.ts` — sem necessidade de spec novo dedicado (PR 6.8).
 
 ### Fase 7 — Beta / Lançamento do MVP
 
